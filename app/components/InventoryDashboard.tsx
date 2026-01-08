@@ -37,7 +37,7 @@ export function InventoryDashboard() {
   const summaryCards = [
     { title: 'Total Items', value: totalItems, icon: Package, color: 'bg-[#2563EB]', change: '+2 this week' },
     { title: 'Total Stock', value: `${totalQuantity.toLocaleString()} kg`, icon: TrendingUp, color: 'bg-[#16A34A]', change: '+5% from last month' },
-    { title: 'Inventory Value', value: `$${totalInventoryValue.toLocaleString()}`, icon: Package, color: 'bg-[#7C3AED]', change: 'At cost price' },
+    { title: 'Inventory Value', value: `PKR ${totalInventoryValue.toLocaleString()}`, icon: Package, color: 'bg-[#7C3AED]', change: 'At cost price' },
     { title: 'Low Stock', value: lowStockCount, icon: AlertTriangle, color: 'bg-[#F59E0B]', change: 'Needs attention' },
   ];
 
@@ -99,8 +99,8 @@ export function InventoryDashboard() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.marbleType}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{item.color}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.quantity.toLocaleString()} {item.unit}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{`$${item.costPrice}/${item.unit}`}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#16A34A]">{`$${item.salePrice}/${item.unit}`}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{`PKR ${item.costPrice}/${item.unit}`}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#16A34A]">{`PKR ${item.salePrice}/${item.unit}`}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{item.location}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(item.status)}`}>

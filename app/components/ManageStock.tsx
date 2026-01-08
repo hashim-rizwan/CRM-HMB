@@ -284,14 +284,19 @@ export function ManageStock() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Cost Price
                 </label>
-                <input
-                  type="number"
-                  name="costPrice"
-                  value={addFormData.costPrice}
-                  onChange={handleAddChange}
-                  placeholder="e.g., 100.00"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
-                />
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-sm text-gray-500">
+                    PKR
+                  </span>
+                  <input
+                    type="number"
+                    name="costPrice"
+                    value={addFormData.costPrice}
+                    onChange={handleAddChange}
+                    placeholder="e.g., 100.00"
+                    className="w-full pl-12 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                  />
+                </div>
               </div>
 
               {/* Sale Price */}
@@ -299,14 +304,19 @@ export function ManageStock() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Sale Price
                 </label>
-                <input
-                  type="number"
-                  name="salePrice"
-                  value={addFormData.salePrice}
-                  onChange={handleAddChange}
-                  placeholder="e.g., 150.00"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
-                />
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-sm text-gray-500">
+                    PKR
+                  </span>
+                  <input
+                    type="number"
+                    name="salePrice"
+                    value={addFormData.salePrice}
+                    onChange={handleAddChange}
+                    placeholder="e.g., 150.00"
+                    className="w-full pl-12 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                  />
+                </div>
               </div>
             </div>
 
