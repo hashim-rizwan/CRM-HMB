@@ -1,0 +1,32 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./inventory.db"
+}
+
+model Marble {
+  id                Int                @id @default(autoincrement())
+  name              String
+  color             String
+  size              String
+  barcode           String             @unique
+  quantity          Int                @default(0)
+  createdAt         DateTime           @default(now())
+  stockTransactions StockTransaction[]
+}
+
+model StockTransaction {
+  id        Int      @id @default(autoincrement())
+  marbleId  Int
+  marble    Marble  @relation(fields: [marbleId], references: [id])
+  type      String
+  quantity  Int
+  createdAt DateTime @default(now())
+}
+

@@ -1,0 +1,58 @@
+{
+  "name": "marble-inventory-system",
+  "version": "1.0.0",
+  "description": "Marble Inventory System",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "next dev",
+    "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && electron .\"",
+    "build": "next build",
+    "electron:build": "npm run build && electron-builder",
+    "postinstall": "prisma generate"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@prisma/client": "^5.19.0",
+    "next": "^14.2.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "concurrently": "^8.2.2",
+    "electron": "^30.0.0",
+    "electron-builder": "^24.13.0",
+    "prisma": "^5.19.0",
+    "typescript": "^5.5.0",
+    "wait-on": "^7.2.0"
+  },
+  "build": {
+    "appId": "com.marble.inventory",
+    "productName": "Marble Inventory System",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "app/**/*",
+      "electron/**/*",
+      "lib/**/*",
+      "prisma/**/*",
+      "package.json",
+      "next.config.js",
+      ".next/**/*",
+      "node_modules/@prisma/client/**/*",
+      "node_modules/.prisma/**/*"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg"
+    }
+  }
+}
+
