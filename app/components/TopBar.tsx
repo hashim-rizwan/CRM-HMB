@@ -1,7 +1,16 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react';
-import { Bell, Search, User, LogOut } from 'lucide-react';
+import { Bell, Search, User, LogOut, AlertTriangle, CheckCircle, Info, Package, Clock, X } from 'lucide-react';
+import { notificationAPI } from '@/lib/api';
+
+interface Notification {
+  id: number;
+  type: string;
+  message: string;
+  createdAt: string;
+  read: boolean;
+}
 
 interface TopBarProps {
   title: string;
@@ -15,24 +24,95 @@ interface TopBarProps {
 
 export function TopBar({ title, searchQuery, setSearchQuery, username, onLogout, onNavigateToNotifications, unreadNotificationCount = 0 }: TopBarProps) {
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const notificationRef = useRef<HTMLDivElement>(null);
 
-  // Close menu when clicking outside
+  // Fetch notifications when dropdown opens
+  useEffect(() => {
+    if (showNotifications) {
+      fetchNotifications();
+    }
+  }, [showNotifications]);
+
+  // Close menus when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setShowUserMenu(false);
       }
+      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+        setShowNotifications(false);
+      }
     };
 
-    if (showUserMenu) {
+    if (showUserMenu || showNotifications) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showUserMenu]);
+  }, [showUserMenu, showNotifications]);
+
+  const fetchNotifications = async () => {
+    try {
+      setLoadingNotifications(true);
+      const response = await notificationAPI.getAll();
+      if (response.success) {
+        setNotifications(response.notifications || []);
+      }
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      setNotifications([]);
+    } finally {
+      setLoadingNotifications(false);
+    }
+  };
+
+  const handleMarkAsRead = async (id: number) => {
+    try {
+      await notificationAPI.markAsRead(id);
+      setNotifications(prev => 
+        prev.map(n => n.id === id ? { ...n, read: true } : n)
+      );
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  };
+
+  const getNotificationIcon = (type: string) => {
+    switch (type) {
+      case 'low-stock':
+        return <AlertTriangle className="w-4 h-4 text-[#F59E0B]" />;
+      case 'stock-added':
+        return <CheckCircle className="w-4 h-4 text-[#16A34A]" />;
+      case 'stock-removed':
+        return <Package className="w-4 h-4 text-[#DC2626]" />;
+      case 'info':
+        return <Info className="w-4 h-4 text-[#2563EB]" />;
+      default:
+        return <Info className="w-4 h-4 text-gray-500" />;
+    }
+  };
+
+  const formatTimestamp = (timestamp: string) => {
+    try {
+      const date = new Date(timestamp);
+      return date.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+      });
+    } catch {
+      return timestamp;
+    }
+  };
+
+  const unreadCount = notifications.filter(n => !n.read).length;
   return (
     <div className="bg-white border-b border-gray-200 px-8 py-4">
       <div className="flex items-center justify-between">
@@ -62,15 +142,95 @@ export function TopBar({ title, searchQuery, setSearchQuery, username, onLogout,
           </div>
 
           {/* Notifications */}
-          <button 
-            onClick={onNavigateToNotifications}
-            className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <Bell className="w-5 h-5 text-gray-600" />
-            {unreadNotificationCount > 0 && (
-              <span className="absolute top-1 right-1 w-2 h-2 bg-[#DC2626] rounded-full"></span>
+          <div className="relative" ref={notificationRef}>
+            <button 
+              onClick={() => setShowNotifications(!showNotifications)}
+              className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <Bell className="w-5 h-5 text-gray-600" />
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 w-2 h-2 bg-[#DC2626] rounded-full"></span>
+              )}
+            </button>
+
+            {/* Notifications Dropdown */}
+            {showNotifications && (
+              <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-[600px] flex flex-col">
+                {/* Header */}
+                <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold text-[#1F2937]">Notifications</h3>
+                    {unreadCount > 0 && (
+                      <p className="text-xs text-gray-500 mt-0.5">{unreadCount} unread</p>
+                    )}
+                  </div>
+                  {onNavigateToNotifications && (
+                    <button
+                      onClick={() => {
+                        setShowNotifications(false);
+                        onNavigateToNotifications();
+                      }}
+                      className="text-xs text-[#2563EB] hover:text-[#1E40AF] font-medium"
+                    >
+                      View All
+                    </button>
+                  )}
+                </div>
+
+                {/* Notifications List */}
+                <div className="overflow-y-auto flex-1">
+                  {loadingNotifications ? (
+                    <div className="px-4 py-8 text-center text-sm text-gray-500">
+                      Loading notifications...
+                    </div>
+                  ) : notifications.length === 0 ? (
+                    <div className="px-4 py-8 text-center">
+                      <Info className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-sm text-gray-500">No notifications</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-gray-100">
+                      {notifications.slice(0, 10).map((notification) => (
+                        <div
+                          key={notification.id}
+                          onClick={() => !notification.read && handleMarkAsRead(notification.id)}
+                          className={`px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer ${
+                            !notification.read ? 'bg-blue-50' : ''
+                          }`}
+                        >
+                          <div className="flex gap-3">
+                            <div className="flex-shrink-0 mt-0.5">
+                              {getNotificationIcon(notification.type)}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p
+                                className={`text-sm ${
+                                  !notification.read
+                                    ? 'font-medium text-[#1F2937]'
+                                    : 'text-gray-700'
+                                }`}
+                              >
+                                {notification.message}
+                              </p>
+                              <div className="flex items-center gap-1.5 mt-1">
+                                <Clock className="w-3 h-3 text-gray-400" />
+                                <span className="text-xs text-gray-500">
+                                  {formatTimestamp(notification.createdAt)}
+                                </span>
+                              </div>
+                            </div>
+                            {!notification.read && (
+                              <div className="flex-shrink-0 w-2 h-2 bg-[#2563EB] rounded-full mt-1.5" />
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
-          </button>
+          </div>
 
           {/* User Profile */}
           <div className="relative" ref={menuRef}>

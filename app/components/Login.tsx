@@ -1,10 +1,11 @@
 'use client'
 
 import { useState } from 'react';
-import { Package, Eye, EyeOff } from 'lucide-react';
+import { Package, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { authAPI } from '@/lib/api';
 
 interface LoginProps {
-  onLogin: (username: string) => void;
+  onLogin: (username: string, userData: any) => void;
 }
 
 export function Login({ onLogin }: LoginProps) {
@@ -14,12 +15,26 @@ export function Login({ onLogin }: LoginProps) {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simple mock authentication
-    if (formData.username && formData.password) {
-      onLogin(formData.username);
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await authAPI.login(formData.username, formData.password);
+      
+      if (response.success && response.user) {
+        onLogin(response.user.username, response.user);
+      } else {
+        setError('Invalid username or password');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Invalid username or password');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -47,6 +62,14 @@ export function Login({ onLogin }: LoginProps) {
           <h2 className="text-2xl font-semibold text-[#1F2937] mb-6">Sign In</h2>
           
           <form onSubmit={handleSubmit}>
+            {/* Error Message */}
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                <p className="text-sm text-red-800">{error}</p>
+              </div>
+            )}
+
             {/* Username */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -107,17 +130,19 @@ export function Login({ onLogin }: LoginProps) {
             {/* Submit Button */}
             <button
               type="submit"
-              className="w-full bg-[#2563EB] text-white py-3 rounded-lg font-medium hover:bg-[#1E40AF] transition-colors shadow-lg hover:shadow-xl"
+              disabled={loading}
+              className="w-full bg-[#2563EB] text-white py-3 rounded-lg font-medium hover:bg-[#1E40AF] transition-colors shadow-lg hover:shadow-xl disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-              Sign In
+              {loading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
 
-          {/* Demo Credentials */}
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <p className="text-xs text-gray-600 font-medium mb-2">Demo Credentials:</p>
-            <p className="text-xs text-gray-500">Username: admin</p>
-            <p className="text-xs text-gray-500">Password: admin123</p>
+          {/* Info Message */}
+          <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <p className="text-xs text-blue-800 font-medium mb-2">ℹ️ Note:</p>
+            <p className="text-xs text-blue-700">
+              Only registered users can log in. Please contact an administrator to create an account.
+            </p>
           </div>
         </div>
 

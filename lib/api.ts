@@ -137,3 +137,12 @@ export const notificationAPI = {
     }),
 };
 
+// Authentication API
+export const authAPI = {
+  login: (username: string, password: string) =>
+    apiRequest<{ success: boolean; user: any }>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    }),
+};
+

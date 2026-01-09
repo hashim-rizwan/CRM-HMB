@@ -6,6 +6,7 @@ import { userAPI } from '@/lib/api';
 
 interface User {
   id: number;
+  username?: string;
   fullName: string;
   email: string;
   role: 'Admin' | 'Staff';
@@ -21,10 +22,12 @@ export function UserManagement() {
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [formData, setFormData] = useState({
+    username: '',
     name: '',
     email: '',
     role: 'Staff' as 'Admin' | 'Staff',
     password: '',
+    confirmPassword: '',
     phone: '',
     department: '',
   });
@@ -39,6 +42,7 @@ export function UserManagement() {
       const response = await userAPI.getAll();
       const transformed = response.users.map((user: any) => ({
         id: user.id,
+        username: user.username,
         fullName: user.fullName,
         email: user.email,
         role: user.role,
@@ -57,7 +61,7 @@ export function UserManagement() {
 
   const handleAddUser = () => {
     setModalMode('add');
-    setFormData({ name: '', email: '', role: 'Staff', password: '' });
+    setFormData({ username: '', name: '', email: '', role: 'Staff', password: '', confirmPassword: '', phone: '', department: '' });
     setShowModal(true);
   };
 
@@ -65,6 +69,7 @@ export function UserManagement() {
     setModalMode('edit');
     setSelectedUser(user);
     setFormData({
+      username: user.username || '',
       name: user.fullName,
       email: user.email,
       role: user.role,
@@ -99,12 +104,20 @@ export function UserManagement() {
   const handleSubmit = async () => {
     try {
       if (modalMode === 'add') {
+        if (!formData.username) {
+          alert('Username is required for new users');
+          return;
+        }
         if (!formData.password) {
           alert('Password is required for new users');
           return;
         }
+        if (formData.password !== formData.confirmPassword) {
+          alert('Passwords do not match. Please try again.');
+          return;
+        }
         await userAPI.create({
-          username: formData.email.split('@')[0], // Simple username generation
+          username: formData.username,
           password: formData.password,
           fullName: formData.name,
           email: formData.email,
@@ -124,7 +137,7 @@ export function UserManagement() {
         alert('User updated successfully!');
       }
       setShowModal(false);
-      setFormData({ name: '', email: '', role: 'Staff', password: '', phone: '', department: '' });
+      setFormData({ username: '', name: '', email: '', role: 'Staff', password: '', confirmPassword: '', phone: '', department: '' });
       await fetchUsers();
     } catch (err: any) {
       alert(err.message || 'Failed to save user');
@@ -342,6 +355,23 @@ export function UserManagement() {
                 />
               </div>
 
+              {modalMode === 'add' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Username <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="username"
+                    value={formData.username}
+                    onChange={handleFormChange}
+                    placeholder="Enter username"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">This will be used for login</p>
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Email Address
@@ -370,17 +400,41 @@ export function UserManagement() {
               </div>
 
               {modalMode === 'add' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
-                  <input
-                    type="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleFormChange}
-                    placeholder="Enter password"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
-                  />
-                </div>
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Password <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="password"
+                      name="password"
+                      value={formData.password}
+                      onChange={handleFormChange}
+                      placeholder="Enter password"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Confirm Password <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="password"
+                      name="confirmPassword"
+                      value={formData.confirmPassword}
+                      onChange={handleFormChange}
+                      placeholder="Confirm password"
+                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] ${
+                        formData.confirmPassword && formData.password !== formData.confirmPassword
+                          ? 'border-red-500 focus:ring-red-500'
+                          : 'border-gray-300'
+                      }`}
+                    />
+                    {formData.confirmPassword && formData.password !== formData.confirmPassword && (
+                      <p className="text-xs text-red-500 mt-1">Passwords do not match</p>
+                    )}
+                  </div>
+                </>
               )}
             </div>
 

@@ -21,16 +21,22 @@ export default function App() {
   // Check if user is already logged in (from localStorage)
   useEffect(() => {
     const savedUsername = localStorage.getItem('username')
+    const savedUserData = localStorage.getItem('userData')
+    
     if (savedUsername) {
+      // Verify the user still exists and is active (optional: can add API check)
       setUsername(savedUsername)
       setIsAuthenticated(true)
     }
   }, [])
 
-  const handleLogin = (user: string) => {
+  const handleLogin = (user: string, userData?: any) => {
     setUsername(user)
     setIsAuthenticated(true)
     localStorage.setItem('username', user)
+    if (userData) {
+      localStorage.setItem('userData', JSON.stringify(userData))
+    }
   }
 
   const handleLogout = () => {
