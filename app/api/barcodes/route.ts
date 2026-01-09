@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     // Transform to barcode format
     const barcodes = marbles.map((marble) => ({
       id: marble.id.toString(),
-      marbleName: `${marble.marbleType} ${marble.color}`,
+      marbleName: marble.marbleType, // Use marbleType only since color is derived from type
       marbleType: marble.marbleType,
       barcodeValue: marble.barcode || '',
       lastPrinted: marble.updatedAt.toISOString().split('T')[0],
