@@ -34,7 +34,7 @@ export async function apiRequest<T>(
 export const stockAPI = {
   add: (data: {
     marbleType: string;
-    color: string;
+    color?: string;
     quantity: number;
     unit: string;
     location: string;

@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     } = await request.json();
 
     // Validation
-    if (!marbleType || !color || !quantity || !unit || !location) {
+    if (!marbleType || !quantity || !unit || !location) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -32,11 +32,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if marble with same type, color, and location exists
+    // If color is not provided, try to get it from existing marble of same type, or use marble type as default
+    let finalColor = color;
+    if (!finalColor || finalColor.trim() === '') {
+      const existingMarble = await prisma.marble.findFirst({
+        where: { marbleType },
+      });
+      finalColor = existingMarble?.color || marbleType; // Use existing color or marble type as default
+    }
+
+    // Check if marble with same type and location exists (color is now derived from type)
     let marble = await prisma.marble.findFirst({
       where: {
         marbleType,
-        color,
         location,
       },
     });
@@ -63,7 +71,7 @@ export async function POST(request: NextRequest) {
       marble = await prisma.marble.create({
         data: {
           marbleType,
-          color,
+          color: finalColor,
           quantity,
           unit,
           location,

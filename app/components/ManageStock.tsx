@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, Minus, Save, Trash2, Scan, Barcode } from 'lucide-react';
+import { Plus, Minus, Save, Trash2, Scan, Barcode, Package } from 'lucide-react';
 import { stockAPI, inventoryAPI } from '@/lib/api';
 
 interface ManageStockProps {
@@ -9,7 +9,7 @@ interface ManageStockProps {
 }
 
 export function ManageStock({ searchQuery = '' }: ManageStockProps) {
-  const [activeTab, setActiveTab] = useState<'add' | 'remove'>('add');
+  const [activeTab, setActiveTab] = useState<'add' | 'new-item' | 'remove'>('add');
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [scannedBarcode, setScannedBarcode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -18,7 +18,6 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
   
   const [addFormData, setAddFormData] = useState({
     marbleType: '',
-    color: '',
     quantity: '',
     unit: 'kg',
     location: '',
@@ -37,6 +36,19 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
     notes: '',
   });
 
+  const [newItemFormData, setNewItemFormData] = useState({
+    marbleType: '',
+    quantity: '',
+    unit: 'kg',
+    location: '',
+    supplier: '',
+    batchNumber: '',
+    costPrice: '',
+    salePrice: '',
+    barcode: '',
+    notes: '',
+  });
+
   const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -45,7 +57,7 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
     try {
       await stockAPI.add({
         marbleType: addFormData.marbleType,
-        color: addFormData.color,
+        color: '', // Color will be derived from marble type in API
         quantity: parseFloat(addFormData.quantity),
         unit: addFormData.unit,
         location: addFormData.location,
@@ -59,7 +71,6 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
 
       setAddFormData({
         marbleType: '',
-        color: '',
         quantity: '',
         unit: 'kg',
         location: '',
@@ -131,6 +142,59 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
       ...removeFormData,
       [e.target.name]: e.target.value,
     });
+  };
+
+  const handleNewItemChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    setNewItemFormData({
+      ...newItemFormData,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  const handleNewItemSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      await stockAPI.add({
+        marbleType: newItemFormData.marbleType,
+        color: '', // Color will be derived from marble type in API
+        quantity: parseFloat(newItemFormData.quantity),
+        unit: newItemFormData.unit,
+        location: newItemFormData.location,
+        supplier: newItemFormData.supplier || undefined,
+        batchNumber: newItemFormData.batchNumber || undefined,
+        costPrice: newItemFormData.costPrice ? parseFloat(newItemFormData.costPrice) : undefined,
+        salePrice: newItemFormData.salePrice ? parseFloat(newItemFormData.salePrice) : undefined,
+        notes: newItemFormData.notes || undefined,
+        barcode: newItemFormData.barcode || undefined,
+      });
+
+      setNewItemFormData({
+        marbleType: '',
+        quantity: '',
+        unit: 'kg',
+        location: '',
+        supplier: '',
+        batchNumber: '',
+        costPrice: '',
+        salePrice: '',
+        barcode: '',
+        notes: '',
+      });
+      
+      // Refresh inventory data after adding new item
+      const response = await inventoryAPI.getAll();
+      setInventory(response.marbles || []);
+      
+      alert('New item added successfully!');
+    } catch (err: any) {
+      setError(err.message || 'Failed to add new item');
+      alert(err.message || 'Failed to add new item');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Extract unique marble types and locations from inventory data
@@ -232,12 +296,11 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
     setScannedBarcode(barcode);
     // Mock auto-populate based on barcode
     if (activeTab === 'add') {
-      setAddFormData({
-        ...addFormData,
-        batchNumber: barcode,
-        marbleType: 'Carrara', // Mock data
-        color: 'White',
-      });
+       setAddFormData({
+         ...addFormData,
+         batchNumber: barcode,
+         marbleType: 'Carrara', // Mock data
+       });
     }
     setShowBarcodeScanner(false);
     alert(`Barcode scanned: ${barcode}`);
@@ -285,8 +348,239 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#DC2626]"></div>
               )}
             </button>
+            
+            <button
+              onClick={() => setActiveTab('new-item')}
+              className={`px-6 py-3 font-medium transition-colors relative ${
+                activeTab === 'new-item'
+                  ? 'text-[#2563EB]'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Package className="w-5 h-5" />
+                Add New Item
+              </div>
+              {activeTab === 'new-item' && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#2563EB]"></div>
+              )}
+            </button>
           </div>
         </div>
+
+        {/* Add New Item Form */}
+        {activeTab === 'new-item' && (
+          <form onSubmit={handleNewItemSubmit} className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-8">
+            <div className="mb-6">
+              <h4 className="text-lg font-semibold text-[#1F2937] dark:text-white mb-2">Add New Item to Inventory</h4>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Create a new marble type entry with all details</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              {/* Marble Type */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Marble Type <span className="text-[#DC2626]">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="marbleType"
+                  value={newItemFormData.marbleType}
+                  onChange={handleNewItemChange}
+                  required
+                  placeholder="e.g., Travertine, Onyx, Granite"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+                />
+              </div>
+
+              {/* Quantity */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Initial Quantity <span className="text-[#DC2626]">*</span>
+                </label>
+                <input
+                  type="number"
+                  name="quantity"
+                  value={newItemFormData.quantity}
+                  onChange={handleNewItemChange}
+                  required
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+                />
+              </div>
+
+              {/* Unit */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Unit <span className="text-[#DC2626]">*</span>
+                </label>
+                <select
+                  name="unit"
+                  value={newItemFormData.unit}
+                  onChange={handleNewItemChange}
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+                >
+                  <option value="kg">Kilograms (kg)</option>
+                  <option value="ton">Tons</option>
+                  <option value="sqm">Square Meters (m²)</option>
+                  <option value="pcs">Pieces</option>
+                </select>
+              </div>
+
+              {/* Location */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Storage Location <span className="text-[#DC2626]">*</span>
+                </label>
+                <select
+                  name="location"
+                  value={newItemFormData.location}
+                  onChange={handleNewItemChange}
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+                >
+                  <option value="">Select location</option>
+                  {locations.map((loc) => (
+                    <option key={loc} value={loc}>{loc}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Supplier */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Supplier
+                </label>
+                <input
+                  type="text"
+                  name="supplier"
+                  value={newItemFormData.supplier}
+                  onChange={handleNewItemChange}
+                  placeholder="Supplier name"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+                />
+              </div>
+
+              {/* Batch Number */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Batch Number
+                </label>
+                <input
+                  type="text"
+                  name="batchNumber"
+                  value={newItemFormData.batchNumber}
+                  onChange={handleNewItemChange}
+                  placeholder="e.g., BATCH-2026-001"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+                />
+              </div>
+
+              {/* Barcode */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Barcode
+                </label>
+                <input
+                  type="text"
+                  name="barcode"
+                  value={newItemFormData.barcode}
+                  onChange={handleNewItemChange}
+                  placeholder="Enter barcode"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+                />
+              </div>
+
+              {/* Cost Price */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Cost Price
+                </label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400">
+                    PKR
+                  </span>
+                  <input
+                    type="number"
+                    name="costPrice"
+                    value={newItemFormData.costPrice}
+                    onChange={handleNewItemChange}
+                    placeholder="e.g., 100.00"
+                    className="w-full pl-12 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              {/* Sale Price */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Sale Price
+                </label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400">
+                    PKR
+                  </span>
+                  <input
+                    type="number"
+                    name="salePrice"
+                    value={newItemFormData.salePrice}
+                    onChange={handleNewItemChange}
+                    placeholder="e.g., 150.00"
+                    className="w-full pl-12 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Notes
+              </label>
+              <textarea
+                name="notes"
+                value={newItemFormData.notes}
+                onChange={handleNewItemChange}
+                rows={4}
+                placeholder="Additional notes or comments..."
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 resize-y"
+              />
+            </div>
+
+            {/* Buttons */}
+            <div className="flex items-center justify-end gap-4">
+              <button
+                type="button"
+                 onClick={() => setNewItemFormData({
+                   marbleType: '',
+                   quantity: '',
+                  unit: 'kg',
+                  location: '',
+                  supplier: '',
+                  batchNumber: '',
+                  costPrice: '',
+                  salePrice: '',
+                  barcode: '',
+                  notes: '',
+                })}
+                className="px-6 py-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                Reset
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-6 py-2 bg-[#2563EB] dark:bg-blue-600 text-white rounded-lg hover:bg-[#1E40AF] dark:hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:bg-gray-400 dark:disabled:bg-gray-700 disabled:cursor-not-allowed disabled:text-gray-200 dark:disabled:text-gray-400"
+              >
+                <Package className="w-4 h-4" />
+                {loading ? 'Adding...' : 'Add New Item'}
+              </button>
+            </div>
+          </form>
+        )}
 
         {/* Add Stock Form */}
         {activeTab === 'add' && (
@@ -311,34 +605,26 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Marble Type <span className="text-[#DC2626]">*</span>
                 </label>
-                <select
-                  name="marbleType"
-                  value={addFormData.marbleType}
-                  onChange={handleAddChange}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
-                >
-                  <option value="">Select marble type</option>
-                  {filteredMarbleTypes.map((type) => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Color */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Color <span className="text-[#DC2626]">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="color"
-                  value={addFormData.color}
-                  onChange={handleAddChange}
-                  required
-                  placeholder="e.g., White, Brown, Black"
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    name="marbleType"
+                    value={addFormData.marbleType}
+                    onChange={handleAddChange}
+                    list="marbleTypesList"
+                    required
+                    placeholder="Type or select marble type"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+                  />
+                  <datalist id="marbleTypesList">
+                    {filteredMarbleTypes.map((type) => (
+                      <option key={type} value={type} />
+                    ))}
+                  </datalist>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Type a new marble type or select from existing ones
+                </p>
               </div>
 
               {/* Quantity */}
@@ -487,10 +773,9 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
             <div className="flex items-center justify-end gap-4">
               <button
                 type="button"
-                onClick={() => setAddFormData({
-                  marbleType: '',
-                  color: '',
-                  quantity: '',
+                 onClick={() => setAddFormData({
+                   marbleType: '',
+                   quantity: '',
                   unit: 'kg',
                   location: '',
                   supplier: '',
@@ -523,11 +808,9 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
                 <div className="space-y-4">
                   <div className="pb-4 border-b border-gray-200 dark:border-gray-800">
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Selected Item</p>
-                    <p className="font-medium text-[#1F2937] dark:text-white">
-                      {addFormData.marbleType && addFormData.color
-                        ? `${addFormData.marbleType} - ${addFormData.color}`
-                        : addFormData.marbleType || 'None selected'}
-                    </p>
+                     <p className="font-medium text-[#1F2937] dark:text-white">
+                       {addFormData.marbleType || 'None selected'}
+                     </p>
                   </div>
 
                   <div className="pb-4 border-b border-gray-200 dark:border-gray-800">
