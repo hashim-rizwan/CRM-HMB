@@ -9,6 +9,7 @@ import { MonthlyReport } from './components/MonthlyReport'
 
 export default function App() {
   const [activeScreen, setActiveScreen] = useState('dashboard')
+  const [searchQuery, setSearchQuery] = useState('')
 
   const getScreenTitle = () => {
     switch (activeScreen) {
@@ -26,13 +27,13 @@ export default function App() {
   const renderContent = () => {
     switch (activeScreen) {
       case 'dashboard':
-        return <InventoryDashboard />
+        return <InventoryDashboard searchQuery={searchQuery} />
       case 'manage-stock':
-        return <ManageStock />
+        return <ManageStock searchQuery={searchQuery} />
       case 'report':
-        return <MonthlyReport />
+        return <MonthlyReport searchQuery={searchQuery} />
       default:
-        return <InventoryDashboard />
+        return <InventoryDashboard searchQuery={searchQuery} />
     }
   }
 
@@ -44,7 +45,7 @@ export default function App() {
       {/* Main Content Area - Flexible */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top Bar */}
-        <TopBar title={getScreenTitle()} />
+        <TopBar title={getScreenTitle()} searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
 
         {/* Scrollable Content */}
         <main className="flex-1 overflow-y-auto">

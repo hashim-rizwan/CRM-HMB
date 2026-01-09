@@ -3,7 +3,11 @@
 import { useState } from 'react';
 import { Plus, Minus, Save, Trash2 } from 'lucide-react';
 
-export function ManageStock() {
+interface ManageStockProps {
+  searchQuery?: string;
+}
+
+export function ManageStock({ searchQuery = '' }: ManageStockProps) {
   const [activeTab, setActiveTab] = useState<'add' | 'remove'>('add');
   
   const [addFormData, setAddFormData] = useState({
@@ -107,6 +111,20 @@ export function ManageStock() {
     'Other',
   ];
 
+  // Filter marble types based on search query
+  const filteredMarbleTypes = searchQuery
+    ? marbleTypes.filter(type => type.toLowerCase().includes(searchQuery.toLowerCase()))
+    : marbleTypes;
+
+  // Filter available stock based on search query
+  const filteredAvailableStock = searchQuery
+    ? availableStock.filter(stock => 
+        stock.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        stock.available.toString().includes(searchQuery) ||
+        stock.unit.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : availableStock;
+
   const selectedStock = availableStock.find(s => s.type === removeFormData.marbleType);
 
   return (
@@ -171,7 +189,7 @@ export function ManageStock() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
                 >
                   <option value="">Select marble type</option>
-                  {marbleTypes.map((type) => (
+                  {filteredMarbleTypes.map((type) => (
                     <option key={type} value={type}>{type}</option>
                   ))}
                 </select>
@@ -385,7 +403,7 @@ export function ManageStock() {
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
                     >
                       <option value="">Select marble type</option>
-                      {availableStock.map((stock) => (
+                      {filteredAvailableStock.map((stock) => (
                         <option key={stock.type} value={stock.type}>
                           {stock.type} - Available: {stock.available.toLocaleString()} {stock.unit}
                         </option>

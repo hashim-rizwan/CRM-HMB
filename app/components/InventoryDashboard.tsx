@@ -26,13 +26,50 @@ const mockInventory: InventoryItem[] = [
   { id: '008', marbleType: 'Statuario', color: 'White/Grey', quantity: 1200, unit: 'kg', location: 'D-02', costPrice: 180, salePrice: 260, status: 'In Stock', lastUpdated: '2026-01-08' },
 ];
 
-export function InventoryDashboard() {
-  const totalItems = mockInventory.length;
-  const totalQuantity = mockInventory.reduce((sum, item) => sum + item.quantity, 0);
-  const lowStockCount = mockInventory.filter(item => item.status === 'Low Stock').length;
-  const outOfStockCount = mockInventory.filter(item => item.status === 'Out of Stock').length;
-  const totalInventoryValue = mockInventory.reduce((sum, item) => sum + (item.quantity * item.costPrice), 0);
-  const potentialRevenue = mockInventory.reduce((sum, item) => sum + (item.quantity * item.salePrice), 0);
+interface InventoryDashboardProps {
+  searchQuery?: string;
+}
+
+// Elastic search function - searches across multiple fields
+const elasticSearch = (items: InventoryItem[], query: string): InventoryItem[] => {
+  if (!query.trim()) {
+    return items;
+  }
+
+  const searchTerm = query.toLowerCase().trim();
+  
+  return items.filter((item) => {
+    // Search across multiple fields
+    const searchableFields = [
+      item.id,
+      item.marbleType,
+      item.color,
+      item.location,
+      item.status,
+      item.unit,
+      item.costPrice.toString(),
+      item.salePrice.toString(),
+      item.quantity.toString(),
+      item.lastUpdated,
+    ];
+
+    // Check if any field contains the search term (case-insensitive)
+    return searchableFields.some((field) => 
+      field.toLowerCase().includes(searchTerm)
+    );
+  });
+};
+
+export function InventoryDashboard({ searchQuery = '' }: InventoryDashboardProps) {
+  // Filter inventory based on search query
+  const filteredInventory = elasticSearch(mockInventory, searchQuery);
+  
+  const totalItems = filteredInventory.length;
+  const totalQuantity = filteredInventory.reduce((sum, item) => sum + item.quantity, 0);
+  const lowStockCount = filteredInventory.filter(item => item.status === 'Low Stock').length;
+  const outOfStockCount = filteredInventory.filter(item => item.status === 'Out of Stock').length;
+  const totalInventoryValue = filteredInventory.reduce((sum, item) => sum + (item.quantity * item.costPrice), 0);
+  const potentialRevenue = filteredInventory.reduce((sum, item) => sum + (item.quantity * item.salePrice), 0);
 
   const summaryCards = [
     { title: 'Total Items', value: totalItems, icon: Package, color: 'bg-[#2563EB]', change: '+2 this week' },
@@ -93,7 +130,14 @@ export function InventoryDashboard() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {mockInventory.map((item) => (
+              {filteredInventory.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="px-6 py-8 text-center text-gray-500">
+                    No inventory items found matching "{searchQuery}"
+                  </td>
+                </tr>
+              ) : (
+                filteredInventory.map((item) => (
                 <tr key={item.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1F2937]">{item.id}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.marbleType}</td>
@@ -109,7 +153,8 @@ export function InventoryDashboard() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.lastUpdated}</td>
                 </tr>
-              ))}
+                ))
+              )}
             </tbody>
           </table>
         </div>

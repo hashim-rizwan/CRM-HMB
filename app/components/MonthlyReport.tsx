@@ -31,7 +31,11 @@ const trendData = [
   { month: 'Dec', inventory: 9800 },
 ];
 
-export function MonthlyReport() {
+interface MonthlyReportProps {
+  searchQuery?: string;
+}
+
+export function MonthlyReport({ searchQuery = '' }: MonthlyReportProps) {
   const [selectedMonth, setSelectedMonth] = useState('December 2025');
   const [reportType, setReportType] = useState('usage');
 
