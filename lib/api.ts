@@ -214,3 +214,50 @@ export const reportsAPI = {
   },
 };
 
+// Backup API
+export const backupAPI = {
+  export: async () => {
+    const response = await fetch('/api/backup/export');
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(error.error || `HTTP error! status: ${response.status}`);
+    }
+    const blob = await response.blob();
+    return blob;
+  },
+
+  restore: (file: File) => {
+    return new Promise<{ success: boolean; message: string }>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const backup = JSON.parse(e.target?.result as string);
+          const result = await backupAPI.restoreFromData(backup);
+          resolve(result);
+        } catch (error: any) {
+          reject(error);
+        }
+      };
+      reader.onerror = () => reject(new Error('Failed to read backup file'));
+      reader.readAsText(file);
+    });
+  },
+
+  restoreFromData: async (backup: any) => {
+    const response = await fetch('/api/backup/restore', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(backup),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(error.error || `HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  },
+};
+

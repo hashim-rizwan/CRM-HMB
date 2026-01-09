@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react';
-import { User, Bell, Lock, Database, Printer, Scan, Save, LogOut } from 'lucide-react';
-import { userAPI, authAPI } from '@/lib/api';
+import { useState, useEffect, useRef } from 'react';
+import { User, Bell, Lock, Database, Printer, Scan, Save, LogOut, Download, Upload } from 'lucide-react';
+import { userAPI, authAPI, backupAPI } from '@/lib/api';
 
 interface SettingsProps {
   username: string;
@@ -32,6 +32,12 @@ export function Settings({ username, onLogout }: SettingsProps) {
   const [changingPassword, setChangingPassword] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
+  const [backingUp, setBackingUp] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+  const [backupMessage, setBackupMessage] = useState<string | null>(null);
+  const [showBackupConfirm, setShowBackupConfirm] = useState(false);
+  const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [notificationSettings, setNotificationSettings] = useState({
     lowStock: true,
@@ -195,6 +201,221 @@ export function Settings({ username, onLogout }: SettingsProps) {
       setPasswordError(err.message || 'Failed to change password. Please check your current password.');
     } finally {
       setChangingPassword(false);
+    }
+  };
+
+  const handleBackupClick = () => {
+    setShowBackupConfirm(true);
+  };
+
+  const handleBackup = async () => {
+    setShowBackupConfirm(false);
+    setBackingUp(true);
+    setBackupMessage(null);
+
+    try {
+      // Check if running in Electron by checking for the backup API
+      // Try multiple ways to detect Electron
+      const electron = (window as any).electron;
+      const hasElectronAPI = electron && electron.backup && electron.backup.saveDialog;
+      
+      if (hasElectronAPI) {
+        // Use Electron native dialog
+        const dialogResult = await electron.backup.saveDialog();
+        
+        if (dialogResult.canceled) {
+          setBackingUp(false);
+          return;
+        }
+
+        // Check if there's an error (e.g., not external drive)
+        if (dialogResult.error) {
+          setBackupMessage(`Error: ${dialogResult.error}`);
+          setBackingUp(false);
+          return;
+        }
+
+        // Fetch backup data
+        const response = await fetch('/api/backup/export');
+        if (!response.ok) {
+          throw new Error('Failed to create backup');
+        }
+        const backupData = await response.text();
+
+        // Write file using Electron
+        const writeResult = await electron.backup.writeFile(
+          dialogResult.filePath,
+          backupData
+        );
+
+        if (writeResult.success) {
+          setBackupMessage('Backup created successfully! File saved to external drive.');
+        } else {
+          throw new Error(writeResult.error || 'Failed to save backup file');
+        }
+      } else {
+        // Web browser fallback - use File System Access API if available, otherwise download
+        try {
+          // Try File System Access API (Chrome/Edge)
+          if ('showSaveFilePicker' in window) {
+            const fileHandle = await (window as any).showSaveFilePicker({
+              suggestedName: `haqeeq-marbles-backup-${new Date().toISOString().split('T')[0]}.json`,
+              types: [{
+                description: 'JSON Files',
+                accept: { 'application/json': ['.json'] }
+              }]
+            });
+
+            // Fetch backup data
+            const response = await fetch('/api/backup/export');
+            if (!response.ok) {
+              throw new Error('Failed to create backup');
+            }
+            const backupData = await response.text();
+
+            // Write to file
+            const writable = await fileHandle.createWritable();
+            await writable.write(backupData);
+            await writable.close();
+
+            setBackupMessage('Backup created successfully! Please ensure the file is saved to an external drive.');
+          } else {
+            // Fallback to browser download
+            const blob = await backupAPI.export();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `haqeeq-marbles-backup-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+
+            setBackupMessage('Backup file downloaded. Please save it to an external drive.');
+          }
+        } catch (err: any) {
+          if (err.name === 'AbortError') {
+            // User cancelled
+            setBackingUp(false);
+            return;
+          }
+          throw err;
+        }
+      }
+      
+      setTimeout(() => setBackupMessage(null), 5000);
+    } catch (err: any) {
+      setBackupMessage(`Error: ${err.message || 'Failed to create backup'}`);
+    } finally {
+      setBackingUp(false);
+    }
+  };
+
+  const handleRestoreClick = () => {
+    setShowRestoreConfirm(true);
+  };
+
+  const handleRestore = async () => {
+    setShowRestoreConfirm(false);
+    setRestoring(true);
+    setBackupMessage(null);
+
+    try {
+      // Check if running in Electron
+      const electron = (window as any).electron;
+      const isElectron = electron && electron.backup && electron.backup.openDialog;
+      
+      if (isElectron) {
+        // Use Electron native dialog
+        const dialogResult = await electron.backup.openDialog();
+        
+        if (dialogResult.canceled) {
+          setRestoring(false);
+          return;
+        }
+
+        if (dialogResult.error) {
+          setBackupMessage(`Error: ${dialogResult.error}`);
+          setRestoring(false);
+          return;
+        }
+
+        // Parse and restore backup
+        const backup = JSON.parse(dialogResult.data);
+        const result = await backupAPI.restoreFromData(backup);
+
+        if (result.success) {
+          setBackupMessage('Backup restored successfully! Please refresh the page.');
+        }
+      } else {
+        // Web browser fallback - use File System Access API if available, otherwise file input
+        try {
+          if ('showOpenFilePicker' in window) {
+            // Use File System Access API (Chrome/Edge)
+            const [fileHandle] = await (window as any).showOpenFilePicker({
+              types: [{
+                description: 'JSON Files',
+                accept: { 'application/json': ['.json'] }
+              }],
+              multiple: false
+            });
+
+            const file = await fileHandle.getFile();
+            const text = await file.text();
+            const backup = JSON.parse(text);
+
+            const result = await backupAPI.restoreFromData(backup);
+            if (result.success) {
+              setBackupMessage('Backup restored successfully! Please refresh the page.');
+            }
+          } else {
+            // Fallback to file input
+            fileInputRef.current?.click();
+            // The handleFileSelect will be called when user selects a file
+            setRestoring(false); // Reset here, will be set to true in handleFileSelect
+            return;
+          }
+        } catch (err: any) {
+          if (err.name === 'AbortError') {
+            // User cancelled
+            setRestoring(false);
+            return;
+          }
+          throw err;
+        }
+      }
+    } catch (err: any) {
+      setBackupMessage(`Error: ${err.message || 'Failed to restore backup'}`);
+      setRestoring(false);
+    }
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.name.endsWith('.json')) {
+      setBackupMessage('Error: Please select a valid backup file (.json)');
+      return;
+    }
+
+    setRestoring(true);
+    setBackupMessage(null);
+
+    try {
+      const result = await backupAPI.restore(file);
+      if (result.success) {
+        setBackupMessage('Backup restored successfully! Please refresh the page.');
+        // Clear file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      }
+    } catch (err: any) {
+      setBackupMessage(`Error: ${err.message || 'Failed to restore backup'}`);
+    } finally {
+      setRestoring(false);
     }
   };
 
@@ -689,16 +910,46 @@ export function Settings({ username, onLogout }: SettingsProps) {
                       </label>
                     </div>
 
+                    {backupMessage && (
+                      <div className={`p-3 rounded-lg text-sm ${
+                        backupMessage.includes('Error') || backupMessage.includes('failed')
+                          ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400'
+                          : 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400'
+                      }`}>
+                        {backupMessage}
+                      </div>
+                    )}
+
                     <div className="flex gap-4">
-                      <button className="px-6 py-2 bg-[#2563EB] text-white rounded-lg hover:bg-[#1E40AF] transition-colors flex items-center gap-2">
+                      <button className="px-6 py-2 bg-[#2563EB] dark:bg-blue-600 text-white rounded-lg hover:bg-[#1E40AF] dark:hover:bg-blue-700 transition-colors flex items-center gap-2">
                         <Save className="w-4 h-4" />
                         Save Settings
                       </button>
-                      <button className="px-6 py-2 bg-[#16A34A] text-white rounded-lg hover:bg-[#15803D] transition-colors flex items-center gap-2">
-                        <Database className="w-4 h-4" />
-                        Backup Now
+                      <button
+                        onClick={handleBackupClick}
+                        disabled={backingUp}
+                        className="px-6 py-2 bg-[#16A34A] dark:bg-green-600 text-white rounded-lg hover:bg-[#15803D] dark:hover:bg-green-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Download className="w-4 h-4" />
+                        {backingUp ? 'Creating Backup...' : 'Backup Now'}
+                      </button>
+                      <button
+                        onClick={handleRestoreClick}
+                        disabled={restoring}
+                        className="px-6 py-2 bg-[#DC2626] dark:bg-red-600 text-white rounded-lg hover:bg-[#B91C1C] dark:hover:bg-red-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Upload className="w-4 h-4" />
+                        {restoring ? 'Restoring...' : 'Restore Backup'}
                       </button>
                     </div>
+
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".json"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
                   </div>
                 </div>
               )}
@@ -706,6 +957,64 @@ export function Settings({ username, onLogout }: SettingsProps) {
           </div>
         </div>
       </div>
+
+      {/* Backup Confirmation Modal */}
+      {showBackupConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-[#1F2937] dark:text-white mb-4">Create Backup</h3>
+            <p className="text-sm text-gray-700 dark:text-gray-300 mb-6">
+              <strong className="text-red-600 dark:text-red-400">IMPORTANT:</strong> Please ensure you have plugged in an external drive.
+              <br /><br />
+              You will be asked to choose where to save the backup file. <strong>Backup files can only be saved to external storage devices.</strong>
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleBackup}
+                className="flex-1 px-4 py-2 bg-[#16A34A] dark:bg-green-600 text-white rounded-lg hover:bg-[#15803D] dark:hover:bg-green-700 transition-colors"
+              >
+                Proceed
+              </button>
+              <button
+                onClick={() => setShowBackupConfirm(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Restore Confirmation Modal */}
+      {showRestoreConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-[#1F2937] dark:text-white mb-4">Restore Backup</h3>
+            <p className="text-sm text-gray-700 dark:text-gray-300 mb-6">
+              <strong className="text-red-600 dark:text-red-400">WARNING:</strong> This will replace ALL current data with the backup data.
+              <br /><br />
+              <strong className="text-red-600 dark:text-red-400">IMPORTANT:</strong> Please ensure you have plugged in your external drive with the backup file.
+              <br /><br />
+              <strong>Please select the backup file from an external storage device.</strong>
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleRestore}
+                className="flex-1 px-4 py-2 bg-[#DC2626] dark:bg-red-600 text-white rounded-lg hover:bg-[#B91C1C] dark:hover:bg-red-700 transition-colors"
+              >
+                Proceed
+              </button>
+              <button
+                onClick={() => setShowRestoreConfirm(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
