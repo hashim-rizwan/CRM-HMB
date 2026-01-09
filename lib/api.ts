@@ -80,9 +80,13 @@ export const marblesAPI = {
 
 // Inventory APIs
 export const inventoryAPI = {
-  getAll: (search?: string) => {
-    const query = search ? `?search=${encodeURIComponent(search)}` : '';
-    return apiRequest<{ success: boolean; marbles: any[] }>(`/inventory${query}`);
+  getAll: (search?: string, sortBy?: string, sortOrder?: 'asc' | 'desc') => {
+    const params = new URLSearchParams();
+    if (search) params.append('search', search);
+    if (sortBy) params.append('sortBy', sortBy);
+    if (sortOrder) params.append('sortOrder', sortOrder);
+    const query = params.toString();
+    return apiRequest<{ success: boolean; marbles: any[] }>(`/inventory${query ? `?${query}` : ''}`);
   },
 
   getByBarcode: (barcode: string) => {

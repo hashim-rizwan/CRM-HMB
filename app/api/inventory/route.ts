@@ -5,9 +5,33 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const search = searchParams.get('search') || '';
+    const sortBy = searchParams.get('sortBy') || 'updatedAt';
+    const sortOrder = searchParams.get('sortOrder') || 'desc';
+
+    // Define valid sort fields
+    const validSortFields: Record<string, string> = {
+      id: 'id',
+      marbleType: 'marbleType',
+      color: 'color',
+      quantity: 'quantity',
+      costPrice: 'costPrice',
+      salePrice: 'salePrice',
+      location: 'location',
+      status: 'status',
+      updatedAt: 'updatedAt',
+      createdAt: 'createdAt',
+    };
+
+    // Validate and set sort field
+    const sortField = validSortFields[sortBy] || 'updatedAt';
+    const order = sortOrder === 'asc' ? 'asc' : 'desc';
+
+    // Build orderBy object
+    const orderBy: any = {};
+    orderBy[sortField] = order;
 
     let marbles = await prisma.marble.findMany({
-      orderBy: { updatedAt: 'desc' },
+      orderBy,
     });
 
     // Filter by search query if provided

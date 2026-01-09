@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react';
-import { Package, TrendingUp, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Package, TrendingUp, AlertTriangle, CheckCircle, ArrowUp, ArrowDown, Eye, EyeOff } from 'lucide-react';
 import { inventoryAPI } from '@/lib/api';
 
 interface InventoryItem {
@@ -63,16 +63,19 @@ export function InventoryDashboard({ searchQuery = '' }: InventoryDashboardProps
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<string>('updatedAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [hideOutOfStock, setHideOutOfStock] = useState<boolean>(false);
 
   useEffect(() => {
     fetchInventory();
     fetchStats();
-  }, [searchQuery]);
+  }, [searchQuery, sortBy, sortOrder]);
 
   const fetchInventory = async () => {
     try {
       setLoading(true);
-      const response = await inventoryAPI.getAll(searchQuery);
+      const response = await inventoryAPI.getAll(searchQuery, sortBy, sortOrder);
       // Transform API data to match InventoryItem interface
       const transformed = response.marbles.map((marble: any) => ({
         id: marble.id.toString(),
@@ -95,6 +98,28 @@ export function InventoryDashboard({ searchQuery = '' }: InventoryDashboardProps
     }
   };
 
+  const handleSort = (column: string) => {
+    if (sortBy === column) {
+      // Toggle sort order if clicking the same column
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Set new column and default to ascending
+      setSortBy(column);
+      setSortOrder('asc');
+    }
+  };
+
+  const getSortIcon = (column: string) => {
+    if (sortBy !== column) {
+      return null;
+    }
+    return sortOrder === 'asc' ? (
+      <ArrowUp className="w-4 h-4 inline-block ml-1" />
+    ) : (
+      <ArrowDown className="w-4 h-4 inline-block ml-1" />
+    );
+  };
+
   const fetchStats = async () => {
     try {
       const response = await inventoryAPI.getStats();
@@ -105,7 +130,12 @@ export function InventoryDashboard({ searchQuery = '' }: InventoryDashboardProps
   };
 
   // Filter inventory based on search query (client-side fallback)
-  const filteredInventory = elasticSearch(inventory, searchQuery);
+  let filteredInventory = elasticSearch(inventory, searchQuery);
+  
+  // Filter out "Out of Stock" items if hideOutOfStock is true
+  if (hideOutOfStock) {
+    filteredInventory = filteredInventory.filter(item => item.status !== 'Out of Stock');
+  }
   
   const totalItems = stats.totalItems || filteredInventory.length;
   const totalQuantity = stats.totalQuantity || filteredInventory.reduce((sum, item) => sum + item.quantity, 0);
@@ -153,23 +183,88 @@ export function InventoryDashboard({ searchQuery = '' }: InventoryDashboardProps
 
       {/* Inventory Table */}
       <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800">
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-[#1F2937] dark:text-white">Current Inventory</h3>
+          <button
+            onClick={() => setHideOutOfStock(!hideOutOfStock)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              hideOutOfStock
+                ? 'bg-[#DC2626] dark:bg-red-600 text-white hover:bg-[#B91C1C] dark:hover:bg-red-700'
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+            }`}
+          >
+            {hideOutOfStock ? (
+              <>
+                <EyeOff className="w-4 h-4" />
+                Show Out of Stock
+              </>
+            ) : (
+              <>
+                <Eye className="w-4 h-4" />
+                Hide Out of Stock
+              </>
+            )}
+          </button>
         </div>
         
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">ID</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Marble Type</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Color</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Quantity</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Cost Price</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Sale Price</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Location</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Last Updated</th>
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  onClick={() => handleSort('id')}
+                >
+                  ID {getSortIcon('id')}
+                </th>
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  onClick={() => handleSort('marbleType')}
+                >
+                  Marble Type {getSortIcon('marbleType')}
+                </th>
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  onClick={() => handleSort('color')}
+                >
+                  Color {getSortIcon('color')}
+                </th>
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  onClick={() => handleSort('quantity')}
+                >
+                  Quantity {getSortIcon('quantity')}
+                </th>
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  onClick={() => handleSort('costPrice')}
+                >
+                  Cost Price {getSortIcon('costPrice')}
+                </th>
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  onClick={() => handleSort('salePrice')}
+                >
+                  Sale Price {getSortIcon('salePrice')}
+                </th>
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  onClick={() => handleSort('location')}
+                >
+                  Location {getSortIcon('location')}
+                </th>
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  onClick={() => handleSort('status')}
+                >
+                  Status {getSortIcon('status')}
+                </th>
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  onClick={() => handleSort('updatedAt')}
+                >
+                  Last Updated {getSortIcon('updatedAt')}
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
