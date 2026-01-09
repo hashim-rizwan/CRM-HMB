@@ -1,14 +1,38 @@
 'use client'
 
-import { Bell, Search, User } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Bell, Search, User, LogOut } from 'lucide-react';
 
 interface TopBarProps {
   title: string;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
+  username?: string;
+  onLogout?: () => void;
+  onNavigateToNotifications?: () => void;
+  unreadNotificationCount?: number;
 }
 
-export function TopBar({ title, searchQuery, setSearchQuery }: TopBarProps) {
+export function TopBar({ title, searchQuery, setSearchQuery, username, onLogout, onNavigateToNotifications, unreadNotificationCount = 0 }: TopBarProps) {
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false);
+      }
+    };
+
+    if (showUserMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showUserMenu]);
   return (
     <div className="bg-white border-b border-gray-200 px-8 py-4">
       <div className="flex items-center justify-between">
@@ -38,18 +62,48 @@ export function TopBar({ title, searchQuery, setSearchQuery }: TopBarProps) {
           </div>
 
           {/* Notifications */}
-          <button className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors">
+          <button 
+            onClick={onNavigateToNotifications}
+            className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          >
             <Bell className="w-5 h-5 text-gray-600" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-[#DC2626] rounded-full"></span>
+            {unreadNotificationCount > 0 && (
+              <span className="absolute top-1 right-1 w-2 h-2 bg-[#DC2626] rounded-full"></span>
+            )}
           </button>
 
           {/* User Profile */}
-          <button className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-lg transition-colors">
-            <div className="w-8 h-8 bg-[#2563EB] rounded-full flex items-center justify-center">
-              <User className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-sm font-medium text-[#1F2937]">Admin</span>
-          </button>
+          <div className="relative" ref={menuRef}>
+            <button 
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <div className="w-8 h-8 bg-[#2563EB] rounded-full flex items-center justify-center">
+                <User className="w-5 h-5 text-white" />
+              </div>
+              <span className="text-sm font-medium text-[#1F2937]">{username || 'Admin'}</span>
+            </button>
+            
+            {/* User Menu Dropdown */}
+            {showUserMenu && onLogout && (
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                <div className="px-4 py-2 border-b border-gray-200">
+                  <p className="text-sm font-medium text-[#1F2937]">{username || 'Admin'}</p>
+                  <p className="text-xs text-gray-500">Logged in</p>
+                </div>
+                <button
+                  onClick={() => {
+                    onLogout();
+                    setShowUserMenu(false);
+                  }}
+                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
