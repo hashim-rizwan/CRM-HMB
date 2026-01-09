@@ -1,6 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+// Generate unique barcode: HMB-XXXXXX format
+async function generateUniqueBarcode(): Promise<string> {
+  let barcode: string;
+  let exists = true;
+  
+  while (exists) {
+    // Generate 6-digit random number
+    const randomNum = Math.floor(100000 + Math.random() * 900000);
+    barcode = `HMB-${randomNum}`;
+    
+    // Check if barcode already exists
+    const existing = await prisma.marble.findUnique({
+      where: { barcode },
+    });
+    
+    exists = existing !== null;
+  }
+  
+  return barcode;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const {
@@ -15,6 +36,7 @@ export async function POST(request: NextRequest) {
       salePrice,
       notes,
       barcode,
+      isNewItem, // Flag to indicate if this is a new item creation
     } = await request.json();
 
     // Validation
@@ -41,6 +63,12 @@ export async function POST(request: NextRequest) {
       finalColor = existingMarble?.color || marbleType; // Use existing color or marble type as default
     }
 
+    // Generate barcode if this is a new item and no barcode provided
+    let finalBarcode = barcode;
+    if (isNewItem && (!finalBarcode || finalBarcode.trim() === '')) {
+      finalBarcode = await generateUniqueBarcode();
+    }
+
     // Check if marble with same type and location exists (color is now derived from type)
     let marble = await prisma.marble.findFirst({
       where: {
@@ -61,7 +89,7 @@ export async function POST(request: NextRequest) {
           salePrice: salePrice || marble.salePrice,
           supplier: supplier || marble.supplier,
           batchNumber: batchNumber || marble.batchNumber,
-          barcode: barcode || marble.barcode,
+          barcode: finalBarcode || marble.barcode,
           notes: notes || marble.notes,
           updatedAt: new Date(),
         },
@@ -77,7 +105,7 @@ export async function POST(request: NextRequest) {
           location,
           supplier: supplier || null,
           batchNumber: batchNumber || null,
-          barcode: barcode || null,
+          barcode: finalBarcode || null,
           costPrice: costPrice || null,
           salePrice: salePrice || null,
           notes: notes || null,

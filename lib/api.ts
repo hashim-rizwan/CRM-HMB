@@ -44,6 +44,7 @@ export const stockAPI = {
     salePrice?: number;
     notes?: string;
     barcode?: string;
+    isNewItem?: boolean;
   }) => apiRequest<{ success: boolean; marble: any }>('/stock/add', {
     method: 'POST',
     body: JSON.stringify(data),
@@ -61,11 +62,31 @@ export const stockAPI = {
   }),
 };
 
+// Marbles API - for creating marble types (not stock)
+export const marblesAPI = {
+  create: (data: {
+    marbleType: string;
+    supplier?: string;
+    batchNumber?: string;
+    costPrice?: number;
+    salePrice?: number;
+    notes?: string;
+    barcode?: string;
+  }) => apiRequest<{ success: boolean; marble: any }>('/marbles/create', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+};
+
 // Inventory APIs
 export const inventoryAPI = {
   getAll: (search?: string) => {
     const query = search ? `?search=${encodeURIComponent(search)}` : '';
     return apiRequest<{ success: boolean; marbles: any[] }>(`/inventory${query}`);
+  },
+
+  getByBarcode: (barcode: string) => {
+    return apiRequest<{ success: boolean; marble: any }>(`/inventory/barcode?barcode=${encodeURIComponent(barcode)}`);
   },
 
   getStats: () =>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { Plus, Minus, Save, Trash2, Scan, Barcode, Package } from 'lucide-react';
-import { stockAPI, inventoryAPI } from '@/lib/api';
+import { stockAPI, inventoryAPI, marblesAPI } from '@/lib/api';
 
 interface ManageStockProps {
   searchQuery?: string;
@@ -38,16 +38,13 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
 
   const [newItemFormData, setNewItemFormData] = useState({
     marbleType: '',
-    quantity: '',
-    unit: 'kg',
-    location: '',
     supplier: '',
     batchNumber: '',
     costPrice: '',
     salePrice: '',
-    barcode: '',
     notes: '',
   });
+  const [generatedBarcode, setGeneratedBarcode] = useState<string>('');
 
   const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -157,41 +154,38 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
     setError(null);
 
     try {
-      await stockAPI.add({
+      const response = await marblesAPI.create({
         marbleType: newItemFormData.marbleType,
-        color: '', // Color will be derived from marble type in API
-        quantity: parseFloat(newItemFormData.quantity),
-        unit: newItemFormData.unit,
-        location: newItemFormData.location,
         supplier: newItemFormData.supplier || undefined,
         batchNumber: newItemFormData.batchNumber || undefined,
         costPrice: newItemFormData.costPrice ? parseFloat(newItemFormData.costPrice) : undefined,
         salePrice: newItemFormData.salePrice ? parseFloat(newItemFormData.salePrice) : undefined,
         notes: newItemFormData.notes || undefined,
-        barcode: newItemFormData.barcode || undefined,
       });
+      
+      // Store the generated barcode from response
+      if (response.marble?.barcode) {
+        setGeneratedBarcode(response.marble.barcode);
+        alert(`New marble type created successfully!\nBarcode: ${response.marble.barcode}\n\nYou can now use "Add Stock" to add inventory for this marble type.`);
+      } else {
+        alert('New marble type created successfully!');
+      }
 
       setNewItemFormData({
         marbleType: '',
-        quantity: '',
-        unit: 'kg',
-        location: '',
         supplier: '',
         batchNumber: '',
         costPrice: '',
         salePrice: '',
-        barcode: '',
         notes: '',
       });
       
       // Refresh inventory data after adding new item
-      const response = await inventoryAPI.getAll();
-      setInventory(response.marbles || []);
-      
-      alert('New item added successfully!');
+      const inventoryResponse = await inventoryAPI.getAll();
+      setInventory(inventoryResponse.marbles || []);
     } catch (err: any) {
-      setError(err.message || 'Failed to add new item');
-      alert(err.message || 'Failed to add new item');
+      setError(err.message || 'Failed to create marble type');
+      alert(err.message || 'Failed to create marble type');
     } finally {
       setLoading(false);
     }
@@ -292,18 +286,45 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
     setShowBarcodeScanner(true);
   };
 
-  const handleBarcodeScanned = (barcode: string) => {
+  const handleBarcodeScanned = async (barcode: string) => {
     setScannedBarcode(barcode);
-    // Mock auto-populate based on barcode
-    if (activeTab === 'add') {
-       setAddFormData({
-         ...addFormData,
-         batchNumber: barcode,
-         marbleType: 'Carrara', // Mock data
-       });
-    }
     setShowBarcodeScanner(false);
-    alert(`Barcode scanned: ${barcode}`);
+    
+    try {
+      // Fetch marble data by barcode
+      const response = await inventoryAPI.getByBarcode(barcode);
+      
+      if (response.marble) {
+        const marble = response.marble;
+        
+        if (activeTab === 'add') {
+          // Auto-populate Add Stock form
+          setAddFormData({
+            ...addFormData,
+            marbleType: marble.marbleType,
+            unit: marble.unit,
+            location: marble.location,
+            supplier: marble.supplier || '',
+            batchNumber: marble.batchNumber || '',
+            costPrice: marble.costPrice?.toString() || '',
+            salePrice: marble.salePrice?.toString() || '',
+          });
+          alert(`Barcode scanned: ${barcode}\nMarble: ${marble.marbleType} - ${marble.color}`);
+        } else if (activeTab === 'remove') {
+          // Auto-populate Remove Stock form
+          setRemoveFormData({
+            ...removeFormData,
+            marbleType: marble.marbleType,
+          });
+          alert(`Barcode scanned: ${barcode}\nMarble: ${marble.marbleType} - ${marble.color}`);
+        }
+      } else {
+        alert(`Barcode ${barcode} not found in database`);
+      }
+    } catch (error: any) {
+      console.error('Error fetching marble by barcode:', error);
+      alert(`Error: ${error.message || 'Failed to fetch marble data'}`);
+    }
   };
 
   return (
@@ -372,8 +393,8 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
         {activeTab === 'new-item' && (
           <form onSubmit={handleNewItemSubmit} className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-8">
             <div className="mb-6">
-              <h4 className="text-lg font-semibold text-[#1F2937] dark:text-white mb-2">Add New Item to Inventory</h4>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Create a new marble type entry with all details</p>
+              <h4 className="text-lg font-semibold text-[#1F2937] dark:text-white mb-2">Add New Marble Type</h4>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Create a new marble type with generic information. Stock can be added later using "Add Stock".</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -391,62 +412,6 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
                   placeholder="e.g., Travertine, Onyx, Granite"
                   className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
                 />
-              </div>
-
-              {/* Quantity */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Initial Quantity <span className="text-[#DC2626]">*</span>
-                </label>
-                <input
-                  type="number"
-                  name="quantity"
-                  value={newItemFormData.quantity}
-                  onChange={handleNewItemChange}
-                  required
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
-                />
-              </div>
-
-              {/* Unit */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Unit <span className="text-[#DC2626]">*</span>
-                </label>
-                <select
-                  name="unit"
-                  value={newItemFormData.unit}
-                  onChange={handleNewItemChange}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
-                >
-                  <option value="kg">Kilograms (kg)</option>
-                  <option value="ton">Tons</option>
-                  <option value="sqm">Square Meters (m²)</option>
-                  <option value="pcs">Pieces</option>
-                </select>
-              </div>
-
-              {/* Location */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Storage Location <span className="text-[#DC2626]">*</span>
-                </label>
-                <select
-                  name="location"
-                  value={newItemFormData.location}
-                  onChange={handleNewItemChange}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
-                >
-                  <option value="">Select location</option>
-                  {locations.map((loc) => (
-                    <option key={loc} value={loc}>{loc}</option>
-                  ))}
-                </select>
               </div>
 
               {/* Supplier */}
@@ -475,21 +440,6 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
                   value={newItemFormData.batchNumber}
                   onChange={handleNewItemChange}
                   placeholder="e.g., BATCH-2026-001"
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
-                />
-              </div>
-
-              {/* Barcode */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Barcode
-                </label>
-                <input
-                  type="text"
-                  name="barcode"
-                  value={newItemFormData.barcode}
-                  onChange={handleNewItemChange}
-                  placeholder="Enter barcode"
                   className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
                 />
               </div>
@@ -550,22 +500,38 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
               />
             </div>
 
+            {/* Generated Barcode Display */}
+            {generatedBarcode && (
+              <div className="mb-6">
+                <div className="bg-[#D1FAE5] dark:bg-green-900 border border-[#16A34A] dark:border-green-700 rounded-lg p-4">
+                  <p className="text-sm font-medium text-[#065F46] dark:text-green-300 mb-1">
+                    ✓ Barcode Generated Successfully
+                  </p>
+                  <p className="text-lg font-semibold text-[#065F46] dark:text-green-200">
+                    {generatedBarcode}
+                  </p>
+                  <p className="text-xs text-[#065F46] dark:text-green-400 mt-1">
+                    This barcode can be scanned to quickly add or remove stock for this marble type
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Buttons */}
             <div className="flex items-center justify-end gap-4">
               <button
                 type="button"
-                 onClick={() => setNewItemFormData({
-                   marbleType: '',
-                   quantity: '',
-                  unit: 'kg',
-                  location: '',
-                  supplier: '',
-                  batchNumber: '',
-                  costPrice: '',
-                  salePrice: '',
-                  barcode: '',
-                  notes: '',
-                })}
+                 onClick={() => {
+                   setNewItemFormData({
+                     marbleType: '',
+                     supplier: '',
+                     batchNumber: '',
+                     costPrice: '',
+                     salePrice: '',
+                     notes: '',
+                   });
+                   setGeneratedBarcode('');
+                 }}
                 className="px-6 py-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
               >
                 Reset
