@@ -7,6 +7,7 @@ import { InventoryDashboard } from './components/InventoryDashboard'
 import { ManageStock } from './components/ManageStock'
 import { MonthlyReport } from './components/MonthlyReport'
 import { Notifications } from './components/Notifications'
+import { BarcodeManagement } from './components/BarcodeManagement'
 import { UserManagement } from './components/UserManagement'
 import { Settings } from './components/Settings'
 import { Login } from './components/Login'
@@ -44,6 +45,8 @@ export default function App() {
         return 'Inventory Dashboard'
       case 'manage-stock':
         return 'Manage Stock'
+      case 'barcodes':
+        return 'Barcode Management'
       case 'notifications':
         return 'Notifications'
       case 'report':
@@ -63,6 +66,8 @@ export default function App() {
         return <InventoryDashboard searchQuery={searchQuery} />
       case 'manage-stock':
         return <ManageStock searchQuery={searchQuery} />
+      case 'barcodes':
+        return <BarcodeManagement />
       case 'notifications':
         return <Notifications />
       case 'report':

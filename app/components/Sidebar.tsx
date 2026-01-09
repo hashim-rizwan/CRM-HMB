@@ -1,6 +1,6 @@
 'use client'
 
-import { Package, Plus, Minus, BarChart3, ArrowLeftRight, Bell, Settings as SettingsIcon, Users } from 'lucide-react';
+import { Package, Plus, Minus, BarChart3, ArrowLeftRight, Bell, Settings as SettingsIcon, Users, Scan } from 'lucide-react';
 
 interface SidebarProps {
   activeScreen: string;
@@ -11,6 +11,7 @@ export function Sidebar({ activeScreen, setActiveScreen }: SidebarProps) {
   const menuItems = [
     { id: 'dashboard', label: 'Inventory Dashboard', icon: Package },
     { id: 'manage-stock', label: 'Manage Stock', icon: ArrowLeftRight },
+    { id: 'barcodes', label: 'Barcode Management', icon: Scan },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'report', label: 'Monthly Usage Report', icon: BarChart3 },
     { id: 'users', label: 'User Management', icon: Users },

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react';
-import { Plus, Minus, Save, Trash2 } from 'lucide-react';
+import { Plus, Minus, Save, Trash2, Scan, Barcode } from 'lucide-react';
 
 interface ManageStockProps {
   searchQuery?: string;
@@ -9,6 +9,8 @@ interface ManageStockProps {
 
 export function ManageStock({ searchQuery = '' }: ManageStockProps) {
   const [activeTab, setActiveTab] = useState<'add' | 'remove'>('add');
+  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
+  const [scannedBarcode, setScannedBarcode] = useState('');
   
   const [addFormData, setAddFormData] = useState({
     marbleType: '',
@@ -127,6 +129,25 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
 
   const selectedStock = availableStock.find(s => s.type === removeFormData.marbleType);
 
+  const handleScanBarcode = () => {
+    setShowBarcodeScanner(true);
+  };
+
+  const handleBarcodeScanned = (barcode: string) => {
+    setScannedBarcode(barcode);
+    // Mock auto-populate based on barcode
+    if (activeTab === 'add') {
+      setAddFormData({
+        ...addFormData,
+        batchNumber: barcode,
+        marbleType: 'Carrara', // Mock data
+        color: 'White',
+      });
+    }
+    setShowBarcodeScanner(false);
+    alert(`Barcode scanned: ${barcode}`);
+  };
+
   return (
     <div className="p-8">
       <div className="max-w-5xl mx-auto">
@@ -175,6 +196,18 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
         {/* Add Stock Form */}
         {activeTab === 'add' && (
           <form onSubmit={handleAddSubmit} className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+            {/* Barcode Scanner Button */}
+            <div className="mb-6 flex justify-end">
+              <button
+                type="button"
+                onClick={handleScanBarcode}
+                className="px-4 py-2 bg-[#2563EB] text-white rounded-lg hover:bg-[#1E40AF] transition-colors flex items-center gap-2"
+              >
+                <Scan className="w-4 h-4" />
+                Scan Barcode
+              </button>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               {/* Marble Type */}
               <div>
@@ -572,6 +605,65 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
           </div>
         )}
       </div>
+
+      {/* Barcode Scanner Modal */}
+      {showBarcodeScanner && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-[#1F2937]">Barcode Scanner</h3>
+              <button
+                onClick={() => setShowBarcodeScanner(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mb-6">
+              <div className="bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg p-8 flex flex-col items-center justify-center">
+                <Barcode className="w-20 h-20 text-gray-400 mb-4" />
+                <p className="text-sm text-gray-600 text-center mb-2">Position barcode in scanner view</p>
+                <p className="text-xs text-gray-500 text-center">Scanner ready...</p>
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Or enter barcode manually:
+              </label>
+              <input
+                type="text"
+                value={scannedBarcode}
+                onChange={(e) => setScannedBarcode(e.target.value)}
+                placeholder="Enter barcode number"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && scannedBarcode) {
+                    handleBarcodeScanned(scannedBarcode);
+                  }
+                }}
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowBarcodeScanner(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => scannedBarcode && handleBarcodeScanned(scannedBarcode)}
+                disabled={!scannedBarcode}
+                className="flex-1 px-4 py-2 bg-[#2563EB] text-white rounded-lg hover:bg-[#1E40AF] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
