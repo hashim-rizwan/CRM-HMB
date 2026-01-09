@@ -197,16 +197,16 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
       <div className="max-w-5xl mx-auto">
         {/* Header with Tabs */}
         <div className="mb-8">
-          <h3 className="text-xl font-semibold text-[#1F2937] mb-4">Manage Stock</h3>
+          <h3 className="text-xl font-semibold text-[#1F2937] dark:text-white mb-4">Manage Stock</h3>
           
           {/* Tabs */}
-          <div className="flex gap-2 border-b border-gray-200">
+          <div className="flex gap-2 border-b border-gray-200 dark:border-gray-800">
             <button
               onClick={() => setActiveTab('add')}
               className={`px-6 py-3 font-medium transition-colors relative ${
                 activeTab === 'add'
                   ? 'text-[#16A34A]'
-                  : 'text-gray-500 hover:text-gray-700'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
               }`}
             >
               <div className="flex items-center gap-2">
@@ -223,7 +223,7 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
               className={`px-6 py-3 font-medium transition-colors relative ${
                 activeTab === 'remove'
                   ? 'text-[#DC2626]'
-                  : 'text-gray-500 hover:text-gray-700'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
               }`}
             >
               <div className="flex items-center gap-2">
@@ -239,13 +239,13 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
 
         {/* Add Stock Form */}
         {activeTab === 'add' && (
-          <form onSubmit={handleAddSubmit} className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+          <form onSubmit={handleAddSubmit} className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-8">
             {/* Barcode Scanner Button */}
             <div className="mb-6 flex justify-end">
               <button
                 type="button"
                 onClick={handleScanBarcode}
-                className="px-4 py-2 bg-[#2563EB] text-white rounded-lg hover:bg-[#1E40AF] transition-colors flex items-center gap-2"
+                className="px-4 py-2 bg-[#2563EB] dark:bg-blue-600 text-white rounded-lg hover:bg-[#1E40AF] dark:hover:bg-blue-700 transition-colors flex items-center gap-2"
               >
                 <Scan className="w-4 h-4" />
                 Scan Barcode
@@ -255,7 +255,7 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               {/* Marble Type */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Marble Type <span className="text-[#DC2626]">*</span>
                 </label>
                 <select
@@ -263,7 +263,7 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
                   value={addFormData.marbleType}
                   onChange={handleAddChange}
                   required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
                 >
                   <option value="">Select marble type</option>
                   {filteredMarbleTypes.map((type) => (
@@ -274,7 +274,7 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
 
               {/* Color */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Color <span className="text-[#DC2626]">*</span>
                 </label>
                 <input
@@ -284,13 +284,13 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
                   onChange={handleAddChange}
                   required
                   placeholder="e.g., White, Brown, Black"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
                 />
               </div>
 
               {/* Quantity */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Quantity <span className="text-[#DC2626]">*</span>
                 </label>
                 <input
@@ -302,13 +302,13 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
                   min="0"
                   step="0.01"
                   placeholder="0.00"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
                 />
               </div>
 
               {/* Unit */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Unit <span className="text-[#DC2626]">*</span>
                 </label>
                 <select
@@ -316,7 +316,7 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
                   value={addFormData.unit}
                   onChange={handleAddChange}
                   required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
                 >
                   <option value="kg">Kilograms (kg)</option>
                   <option value="ton">Tons</option>
@@ -327,7 +327,7 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
 
               {/* Location */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Storage Location <span className="text-[#DC2626]">*</span>
                 </label>
                 <select
@@ -335,7 +335,7 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
                   value={addFormData.location}
                   onChange={handleAddChange}
                   required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
                 >
                   <option value="">Select location</option>
                   {locations.map((loc) => (
@@ -346,7 +346,7 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
 
               {/* Supplier */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Supplier
                 </label>
                 <input
@@ -355,13 +355,13 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
                   value={addFormData.supplier}
                   onChange={handleAddChange}
                   placeholder="Supplier name"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
                 />
               </div>
 
               {/* Batch Number */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Batch Number
                 </label>
                 <input
@@ -370,17 +370,17 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
                   value={addFormData.batchNumber}
                   onChange={handleAddChange}
                   placeholder="e.g., BATCH-2026-001"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
                 />
               </div>
 
               {/* Cost Price */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Cost Price
                 </label>
                 <div className="relative">
-                  <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-sm text-gray-500">
+                  <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400">
                     PKR
                   </span>
                   <input
@@ -389,18 +389,18 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
                     value={addFormData.costPrice}
                     onChange={handleAddChange}
                     placeholder="e.g., 100.00"
-                    className="w-full pl-12 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                    className="w-full pl-12 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
                   />
                 </div>
               </div>
 
               {/* Sale Price */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Sale Price
                 </label>
                 <div className="relative">
-                  <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-sm text-gray-500">
+                  <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400">
                     PKR
                   </span>
                   <input
@@ -409,7 +409,7 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
                     value={addFormData.salePrice}
                     onChange={handleAddChange}
                     placeholder="e.g., 150.00"
-                    className="w-full pl-12 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                    className="w-full pl-12 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
                   />
                 </div>
               </div>
@@ -417,7 +417,7 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
 
             {/* Notes */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Notes
               </label>
               <textarea
@@ -426,7 +426,7 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
                 onChange={handleAddChange}
                 rows={4}
                 placeholder="Additional notes or comments..."
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 resize-y"
               />
             </div>
 
@@ -446,14 +446,14 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
                   salePrice: '',
                   notes: '',
                 })}
-                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-6 py-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
               >
                 Reset
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="px-6 py-2 bg-[#16A34A] text-white rounded-lg hover:bg-[#15803D] transition-colors flex items-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                className="px-6 py-2 bg-[#16A34A] dark:bg-green-600 text-white rounded-lg hover:bg-[#15803D] dark:hover:bg-green-700 transition-colors flex items-center gap-2 disabled:bg-gray-400 dark:disabled:bg-gray-700 disabled:cursor-not-allowed disabled:text-gray-200 dark:disabled:text-gray-400"
               >
                 <Save className="w-4 h-4" />
                 {loading ? 'Adding...' : 'Add Stock'}
@@ -466,11 +466,11 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
         {activeTab === 'remove' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
-              <form onSubmit={handleRemoveSubmit} className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+              <form onSubmit={handleRemoveSubmit} className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-8">
                 <div className="space-y-6 mb-6">
                   {/* Marble Type */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Marble Type <span className="text-[#DC2626]">*</span>
                     </label>
                     <select
@@ -478,7 +478,7 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
                       value={removeFormData.marbleType}
                       onChange={handleRemoveChange}
                       required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
                     >
                       <option value="">Select marble type</option>
                       {filteredAvailableStock.map((stock) => (
@@ -491,7 +491,7 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
 
                   {/* Quantity */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Quantity to Remove <span className="text-[#DC2626]">*</span>
                     </label>
                     <div className="relative">
@@ -505,14 +505,14 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
                         max={selectedStock?.available || undefined}
                         step="0.01"
                         placeholder="0.00"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
                       />
-                      <span className="absolute right-4 top-1/2 transform -translate-y-1/2 text-sm text-gray-500">
+                      <span className="absolute right-4 top-1/2 transform -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400">
                         {selectedStock?.unit || 'kg'}
                       </span>
                     </div>
                     {selectedStock && (
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                         Maximum available: {selectedStock.available.toLocaleString()} {selectedStock.unit}
                       </p>
                     )}
@@ -520,7 +520,7 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
 
                   {/* Reason */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Reason for Removal <span className="text-[#DC2626]">*</span>
                     </label>
                     <select
@@ -528,7 +528,7 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
                       value={removeFormData.reason}
                       onChange={handleRemoveChange}
                       required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
                     >
                       <option value="">Select reason</option>
                       {reasons.map((reason) => (
@@ -539,7 +539,7 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
 
                   {/* Requested By */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Requested By
                     </label>
                     <input
@@ -548,13 +548,13 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
                       value={removeFormData.requestedBy}
                       onChange={handleRemoveChange}
                       placeholder="Name or department"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
                     />
                   </div>
 
                   {/* Notes */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Notes
                     </label>
                     <textarea
@@ -563,7 +563,7 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
                       onChange={handleRemoveChange}
                       rows={4}
                       placeholder="Additional details..."
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
                     />
                   </div>
                 </div>
@@ -579,14 +579,14 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
                       requestedBy: '',
                       notes: '',
                     })}
-                    className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                    className="px-6 py-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                   >
                     Reset
                   </button>
                   <button
                     type="submit"
                     disabled={loading}
-                    className="px-6 py-2 bg-[#DC2626] text-white rounded-lg hover:bg-[#B91C1C] transition-colors flex items-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    className="px-6 py-2 bg-[#DC2626] dark:bg-red-600 text-white rounded-lg hover:bg-[#B91C1C] dark:hover:bg-red-700 transition-colors flex items-center gap-2 disabled:bg-gray-400 dark:disabled:bg-gray-700 disabled:cursor-not-allowed disabled:text-gray-200 dark:disabled:text-gray-400"
                   >
                     <Trash2 className="w-4 h-4" />
                     {loading ? 'Removing...' : 'Remove Stock'}
@@ -597,20 +597,20 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
 
             {/* Summary Panel */}
             <div className="lg:col-span-1">
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 sticky top-8">
-                <h4 className="font-semibold text-[#1F2937] mb-4">Quick Summary</h4>
+              <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-6 sticky top-8">
+                <h4 className="font-semibold text-[#1F2937] dark:text-white mb-4">Quick Summary</h4>
                 
                 <div className="space-y-4">
-                  <div className="pb-4 border-b border-gray-200">
-                    <p className="text-sm text-gray-600 mb-1">Selected Item</p>
-                    <p className="font-medium text-[#1F2937]">
+                  <div className="pb-4 border-b border-gray-200 dark:border-gray-800">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Selected Item</p>
+                    <p className="font-medium text-[#1F2937] dark:text-white">
                       {removeFormData.marbleType || 'None selected'}
                     </p>
                   </div>
 
-                  <div className="pb-4 border-b border-gray-200">
-                    <p className="text-sm text-gray-600 mb-1">Available Stock</p>
-                    <p className="font-medium text-[#1F2937]">
+                  <div className="pb-4 border-b border-gray-200 dark:border-gray-800">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Available Stock</p>
+                    <p className="font-medium text-[#1F2937] dark:text-white">
                       {selectedStock 
                         ? `${selectedStock.available.toLocaleString()} ${selectedStock.unit}`
                         : '-'
@@ -618,9 +618,9 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
                     </p>
                   </div>
 
-                  <div className="pb-4 border-b border-gray-200">
-                    <p className="text-sm text-gray-600 mb-1">Removing</p>
-                    <p className="font-medium text-[#DC2626]">
+                  <div className="pb-4 border-b border-gray-200 dark:border-gray-800">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Removing</p>
+                    <p className="font-medium text-[#DC2626] dark:text-red-400">
                       {removeFormData.quantity 
                         ? `${parseFloat(removeFormData.quantity).toLocaleString()} ${selectedStock?.unit || 'kg'}`
                         : '-'
@@ -629,8 +629,8 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
                   </div>
 
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">Remaining Stock</p>
-                    <p className="font-semibold text-[#1F2937]">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Remaining Stock</p>
+                    <p className="font-semibold text-[#1F2937] dark:text-white">
                       {selectedStock && removeFormData.quantity
                         ? `${(selectedStock.available - parseFloat(removeFormData.quantity)).toLocaleString()} ${selectedStock.unit}`
                         : '-'
@@ -640,8 +640,8 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
                 </div>
 
                 {selectedStock && removeFormData.quantity && (selectedStock.available - parseFloat(removeFormData.quantity)) < 500 && (
-                  <div className="mt-4 p-3 bg-[#FEF3C7] border border-[#F59E0B] rounded-lg">
-                    <p className="text-xs text-[#92400E]">
+                  <div className="mt-4 p-3 bg-[#FEF3C7] dark:bg-yellow-900 border border-[#F59E0B] dark:border-yellow-700 rounded-lg">
+                    <p className="text-xs text-[#92400E] dark:text-yellow-300">
                       ⚠️ Warning: Remaining stock will be below 500 {selectedStock.unit}
                     </p>
                   </div>
@@ -655,27 +655,27 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
       {/* Barcode Scanner Modal */}
       {showBarcodeScanner && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-md w-full p-6">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-[#1F2937]">Barcode Scanner</h3>
+              <h3 className="text-lg font-semibold text-[#1F2937] dark:text-white">Barcode Scanner</h3>
               <button
                 onClick={() => setShowBarcodeScanner(false)}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
               >
                 ✕
               </button>
             </div>
 
             <div className="mb-6">
-              <div className="bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg p-8 flex flex-col items-center justify-center">
-                <Barcode className="w-20 h-20 text-gray-400 mb-4" />
-                <p className="text-sm text-gray-600 text-center mb-2">Position barcode in scanner view</p>
-                <p className="text-xs text-gray-500 text-center">Scanner ready...</p>
+              <div className="bg-gray-100 dark:bg-gray-800 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-8 flex flex-col items-center justify-center">
+                <Barcode className="w-20 h-20 text-gray-400 dark:text-gray-500 mb-4" />
+                <p className="text-sm text-gray-600 dark:text-gray-400 text-center mb-2">Position barcode in scanner view</p>
+                <p className="text-xs text-gray-500 dark:text-gray-500 text-center">Scanner ready...</p>
               </div>
             </div>
 
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Or enter barcode manually:
               </label>
               <input
@@ -683,7 +683,7 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
                 value={scannedBarcode}
                 onChange={(e) => setScannedBarcode(e.target.value)}
                 placeholder="Enter barcode number"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && scannedBarcode) {
                     handleBarcodeScanned(scannedBarcode);
@@ -695,14 +695,14 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
             <div className="flex gap-3">
               <button
                 onClick={() => setShowBarcodeScanner(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={() => scannedBarcode && handleBarcodeScanned(scannedBarcode)}
                 disabled={!scannedBarcode}
-                className="flex-1 px-4 py-2 bg-[#2563EB] text-white rounded-lg hover:bg-[#1E40AF] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-2 bg-[#2563EB] dark:bg-blue-600 text-white rounded-lg hover:bg-[#1E40AF] dark:hover:bg-blue-700 transition-colors disabled:bg-gray-300 dark:disabled:bg-gray-700 disabled:cursor-not-allowed disabled:text-gray-200 dark:disabled:text-gray-400"
               >
                 Confirm
               </button>

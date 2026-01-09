@@ -115,12 +115,12 @@ export function Settings({ username, onLogout }: SettingsProps) {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h3 className="text-xl font-semibold text-[#1F2937]">Settings</h3>
-            <p className="text-sm text-gray-600 mt-1">Manage your account and preferences</p>
+            <h3 className="text-xl font-semibold text-[#1F2937] dark:text-white">Settings</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Manage your account and preferences</p>
           </div>
           <button
             onClick={onLogout}
-            className="flex items-center gap-2 px-4 py-2 text-[#DC2626] border border-[#DC2626] rounded-lg hover:bg-[#DC2626] hover:text-white transition-colors"
+            className="flex items-center gap-2 px-4 py-2 text-[#DC2626] dark:text-red-400 border border-[#DC2626] dark:border-red-600 rounded-lg hover:bg-[#DC2626] dark:hover:bg-red-600 hover:text-white transition-colors"
           >
             <LogOut className="w-4 h-4" />
             Logout
@@ -130,7 +130,7 @@ export function Settings({ username, onLogout }: SettingsProps) {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Sidebar Tabs */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+            <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-2">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 return (
@@ -140,7 +140,7 @@ export function Settings({ username, onLogout }: SettingsProps) {
                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-1 transition-colors ${
                       activeTab === tab.id
                         ? 'bg-[#2563EB] text-white'
-                        : 'text-gray-700 hover:bg-gray-50'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
                     }`}
                   >
                     <Icon className="w-5 h-5" />
@@ -153,65 +153,65 @@ export function Settings({ username, onLogout }: SettingsProps) {
 
           {/* Content Area */}
           <div className="lg:col-span-3">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+            <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-8">
               {/* Profile Tab */}
               {activeTab === 'profile' && (
                 <div>
-                  <h4 className="text-lg font-semibold text-[#1F2937] mb-6">Profile Information</h4>
+                  <h4 className="text-lg font-semibold text-[#1F2937] dark:text-white mb-6">Profile Information</h4>
                   
                   <div className="space-y-4 mb-6">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Full Name</label>
                       <input
                         type="text"
                         name="fullName"
                         value={profileData.fullName}
                         onChange={handleProfileChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email</label>
                       <input
                         type="email"
                         name="email"
                         value={profileData.email}
                         onChange={handleProfileChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Phone</label>
                       <input
                         type="tel"
                         name="phone"
                         value={profileData.phone}
                         onChange={handleProfileChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
                       />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Role</label>
                         <input
                           type="text"
                           name="role"
                           value={profileData.role}
                           onChange={handleProfileChange}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Department</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Department</label>
                         <input
                           type="text"
                           name="department"
                           value={profileData.department}
                           onChange={handleProfileChange}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
                         />
                       </div>
                     </div>
@@ -219,7 +219,7 @@ export function Settings({ username, onLogout }: SettingsProps) {
 
                   <button
                     onClick={handleSaveProfile}
-                    className="px-6 py-2 bg-[#2563EB] text-white rounded-lg hover:bg-[#1E40AF] transition-colors flex items-center gap-2"
+                    className="px-6 py-2 bg-[#2563EB] dark:bg-blue-600 text-white rounded-lg hover:bg-[#1E40AF] dark:hover:bg-blue-700 transition-colors flex items-center gap-2"
                   >
                     <Save className="w-4 h-4" />
                     Save Changes
@@ -230,39 +230,39 @@ export function Settings({ username, onLogout }: SettingsProps) {
               {/* Security Tab */}
               {activeTab === 'security' && (
                 <div>
-                  <h4 className="text-lg font-semibold text-[#1F2937] mb-6">Change Password</h4>
+                  <h4 className="text-lg font-semibold text-[#1F2937] dark:text-white mb-6">Change Password</h4>
                   
                   <div className="space-y-4 mb-6 max-w-md">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Current Password</label>
                       <input
                         type="password"
                         name="currentPassword"
                         value={securityData.currentPassword}
                         onChange={handleSecurityChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">New Password</label>
                       <input
                         type="password"
                         name="newPassword"
                         value={securityData.newPassword}
                         onChange={handleSecurityChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Confirm New Password</label>
                       <input
                         type="password"
                         name="confirmPassword"
                         value={securityData.confirmPassword}
                         onChange={handleSecurityChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
                       />
                     </div>
                   </div>
@@ -279,77 +279,77 @@ export function Settings({ username, onLogout }: SettingsProps) {
               {/* Notifications Tab */}
               {activeTab === 'notifications' && (
                 <div>
-                  <h4 className="text-lg font-semibold text-[#1F2937] mb-6">Notification Preferences</h4>
+                  <h4 className="text-lg font-semibold text-[#1F2937] dark:text-white mb-6">Notification Preferences</h4>
                   
                   <div className="space-y-4">
-                    <div className="pb-4 border-b border-gray-200">
-                      <h5 className="font-medium text-[#1F2937] mb-3">Alert Notifications</h5>
+                    <div className="pb-4 border-b border-gray-200 dark:border-gray-800">
+                      <h5 className="font-medium text-[#1F2937] dark:text-white mb-3">Alert Notifications</h5>
                       
                       <label className="flex items-center justify-between py-2 cursor-pointer">
-                        <span className="text-gray-700">Low Stock Alerts</span>
+                        <span className="text-gray-700 dark:text-gray-300">Low Stock Alerts</span>
                         <input
                           type="checkbox"
                           checked={notificationSettings.lowStock}
                           onChange={() => handleNotificationToggle('lowStock')}
-                          className="w-5 h-5 text-[#2563EB] border-gray-300 rounded focus:ring-[#2563EB]"
+                          className="w-5 h-5 text-[#2563EB] border-gray-300 dark:border-gray-600 rounded focus:ring-[#2563EB] dark:bg-gray-800 dark:checked:bg-[#2563EB]"
                         />
                       </label>
 
                       <label className="flex items-center justify-between py-2 cursor-pointer">
-                        <span className="text-gray-700">New Order Notifications</span>
+                        <span className="text-gray-700 dark:text-gray-300">New Order Notifications</span>
                         <input
                           type="checkbox"
                           checked={notificationSettings.newOrders}
                           onChange={() => handleNotificationToggle('newOrders')}
-                          className="w-5 h-5 text-[#2563EB] border-gray-300 rounded focus:ring-[#2563EB]"
+                          className="w-5 h-5 text-[#2563EB] border-gray-300 dark:border-gray-600 rounded focus:ring-[#2563EB] dark:bg-gray-800 dark:checked:bg-[#2563EB]"
                         />
                       </label>
                     </div>
 
-                    <div className="pb-4 border-b border-gray-200">
-                      <h5 className="font-medium text-[#1F2937] mb-3">Report Notifications</h5>
+                    <div className="pb-4 border-b border-gray-200 dark:border-gray-800">
+                      <h5 className="font-medium text-[#1F2937] dark:text-white mb-3">Report Notifications</h5>
                       
                       <label className="flex items-center justify-between py-2 cursor-pointer">
-                        <span className="text-gray-700">Daily Reports</span>
+                        <span className="text-gray-700 dark:text-gray-300">Daily Reports</span>
                         <input
                           type="checkbox"
                           checked={notificationSettings.dailyReport}
                           onChange={() => handleNotificationToggle('dailyReport')}
-                          className="w-5 h-5 text-[#2563EB] border-gray-300 rounded focus:ring-[#2563EB]"
+                          className="w-5 h-5 text-[#2563EB] border-gray-300 dark:border-gray-600 rounded focus:ring-[#2563EB] dark:bg-gray-800 dark:checked:bg-[#2563EB]"
                         />
                       </label>
 
                       <label className="flex items-center justify-between py-2 cursor-pointer">
-                        <span className="text-gray-700">Weekly Reports</span>
+                        <span className="text-gray-700 dark:text-gray-300">Weekly Reports</span>
                         <input
                           type="checkbox"
                           checked={notificationSettings.weeklyReport}
                           onChange={() => handleNotificationToggle('weeklyReport')}
-                          className="w-5 h-5 text-[#2563EB] border-gray-300 rounded focus:ring-[#2563EB]"
+                          className="w-5 h-5 text-[#2563EB] border-gray-300 dark:border-gray-600 rounded focus:ring-[#2563EB] dark:bg-gray-800 dark:checked:bg-[#2563EB]"
                         />
                       </label>
                     </div>
 
                     <div>
-                      <h5 className="font-medium text-[#1F2937] mb-3">Delivery Methods</h5>
+                      <h5 className="font-medium text-[#1F2937] dark:text-white mb-3">Delivery Methods</h5>
                       
                       <label className="flex items-center justify-between py-2 cursor-pointer">
-                        <span className="text-gray-700">Email Notifications</span>
+                        <span className="text-gray-700 dark:text-gray-300">Email Notifications</span>
                         <input
                           type="checkbox"
                           checked={notificationSettings.emailNotifications}
                           onChange={() => handleNotificationToggle('emailNotifications')}
-                          className="w-5 h-5 text-[#2563EB] border-gray-300 rounded focus:ring-[#2563EB]"
+                          className="w-5 h-5 text-[#2563EB] border-gray-300 dark:border-gray-600 rounded focus:ring-[#2563EB] dark:bg-gray-800 dark:checked:bg-[#2563EB]"
                         />
                       </label>
 
                       <label className="flex items-center justify-between py-2 cursor-pointer">
-                        <span className="text-gray-700">Push Notifications</span>
+                        <span className="text-gray-700 dark:text-gray-300">Push Notifications</span>
                         <input
                           type="checkbox"
                           checked={notificationSettings.pushNotifications}
                           onChange={() => handleNotificationToggle('pushNotifications')}
-                          className="w-5 h-5 text-[#2563EB] border-gray-300 rounded focus:ring-[#2563EB]"
+                          className="w-5 h-5 text-[#2563EB] border-gray-300 dark:border-gray-600 rounded focus:ring-[#2563EB] dark:bg-gray-800 dark:checked:bg-[#2563EB]"
                         />
                       </label>
                     </div>
@@ -360,54 +360,54 @@ export function Settings({ username, onLogout }: SettingsProps) {
               {/* Scanner & Barcode Tab */}
               {activeTab === 'scanner' && (
                 <div>
-                  <h4 className="text-lg font-semibold text-[#1F2937] mb-6">Scanner & Barcode Settings</h4>
+                  <h4 className="text-lg font-semibold text-[#1F2937] dark:text-white mb-6">Scanner & Barcode Settings</h4>
                   
                   <div className="space-y-6">
-                    <div className="pb-4 border-b border-gray-200">
-                      <h5 className="font-medium text-[#1F2937] mb-3">Scanner Configuration</h5>
+                    <div className="pb-4 border-b border-gray-200 dark:border-gray-800">
+                      <h5 className="font-medium text-[#1F2937] dark:text-white mb-3">Scanner Configuration</h5>
                       
                       <label className="flex items-center justify-between py-2 cursor-pointer">
-                        <span className="text-gray-700">Enable Barcode Scanner</span>
+                        <span className="text-gray-700 dark:text-gray-300">Enable Barcode Scanner</span>
                         <input
                           type="checkbox"
                           name="scannerEnabled"
                           checked={scannerSettings.scannerEnabled}
                           onChange={handleScannerChange}
-                          className="w-5 h-5 text-[#2563EB] border-gray-300 rounded focus:ring-[#2563EB]"
+                          className="w-5 h-5 text-[#2563EB] border-gray-300 dark:border-gray-600 rounded focus:ring-[#2563EB] dark:bg-gray-800 dark:checked:bg-[#2563EB]"
                         />
                       </label>
 
                       <label className="flex items-center justify-between py-2 cursor-pointer">
-                        <span className="text-gray-700">Auto-populate Form Fields</span>
+                        <span className="text-gray-700 dark:text-gray-300">Auto-populate Form Fields</span>
                         <input
                           type="checkbox"
                           name="autoPopulate"
                           checked={scannerSettings.autoPopulate}
                           onChange={handleScannerChange}
-                          className="w-5 h-5 text-[#2563EB] border-gray-300 rounded focus:ring-[#2563EB]"
+                          className="w-5 h-5 text-[#2563EB] border-gray-300 dark:border-gray-600 rounded focus:ring-[#2563EB] dark:bg-gray-800 dark:checked:bg-[#2563EB]"
                         />
                       </label>
 
                       <label className="flex items-center justify-between py-2 cursor-pointer">
-                        <span className="text-gray-700">Scan Sound Feedback</span>
+                        <span className="text-gray-700 dark:text-gray-300">Scan Sound Feedback</span>
                         <input
                           type="checkbox"
                           name="scanSound"
                           checked={scannerSettings.scanSound}
                           onChange={handleScannerChange}
-                          className="w-5 h-5 text-[#2563EB] border-gray-300 rounded focus:ring-[#2563EB]"
+                          className="w-5 h-5 text-[#2563EB] border-gray-300 dark:border-gray-600 rounded focus:ring-[#2563EB] dark:bg-gray-800 dark:checked:bg-[#2563EB]"
                         />
                       </label>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Scan Mode</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Scan Mode</label>
                         <select
                           name="scanMode"
                           value={scannerSettings.scanMode}
                           onChange={handleScannerChange}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
                         >
                           <option value="continuous">Continuous Scan</option>
                           <option value="single">Single Scan</option>
@@ -416,12 +416,12 @@ export function Settings({ username, onLogout }: SettingsProps) {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Barcode Format</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Barcode Format</label>
                         <select
                           name="barcodeFormat"
                           value={scannerSettings.barcodeFormat}
                           onChange={handleScannerChange}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
                         >
                           <option value="CODE128">CODE128</option>
                           <option value="CODE39">CODE39</option>
@@ -432,9 +432,9 @@ export function Settings({ username, onLogout }: SettingsProps) {
                       </div>
                     </div>
 
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <p className="text-sm text-blue-800 font-medium mb-2">💡 Scanner Tips:</p>
-                      <ul className="text-xs text-blue-700 space-y-1 ml-4 list-disc">
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                      <p className="text-sm text-blue-800 dark:text-blue-300 font-medium mb-2">💡 Scanner Tips:</p>
+                      <ul className="text-xs text-blue-700 dark:text-blue-300 space-y-1 ml-4 list-disc">
                         <li>Connect your barcode scanner device before scanning</li>
                         <li>Ensure good lighting for optimal scan results</li>
                         <li>Hold scanner 4-6 inches from the barcode</li>
@@ -453,28 +453,28 @@ export function Settings({ username, onLogout }: SettingsProps) {
               {/* System Tab */}
               {activeTab === 'system' && (
                 <div>
-                  <h4 className="text-lg font-semibold text-[#1F2937] mb-6">System Settings</h4>
+                  <h4 className="text-lg font-semibold text-[#1F2937] dark:text-white mb-6">System Settings</h4>
                   
                   <div className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Low Stock Threshold (kg)</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Low Stock Threshold (kg)</label>
                         <input
                           type="number"
                           name="lowStockThreshold"
                           value={systemSettings.lowStockThreshold}
                           onChange={handleSystemChange}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Backup Frequency</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Backup Frequency</label>
                         <select
                           name="backupFrequency"
                           value={systemSettings.backupFrequency}
                           onChange={handleSystemChange}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
                         >
                           <option value="hourly">Hourly</option>
                           <option value="daily">Daily</option>
@@ -484,12 +484,12 @@ export function Settings({ username, onLogout }: SettingsProps) {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Date Format</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Date Format</label>
                         <select
                           name="dateFormat"
                           value={systemSettings.dateFormat}
                           onChange={handleSystemChange}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
                         >
                           <option value="YYYY-MM-DD">YYYY-MM-DD</option>
                           <option value="DD/MM/YYYY">DD/MM/YYYY</option>
@@ -498,12 +498,12 @@ export function Settings({ username, onLogout }: SettingsProps) {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Currency</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Currency</label>
                         <select
                           name="currency"
                           value={systemSettings.currency}
                           onChange={handleSystemChange}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
                         >
                           <option value="PKR">PKR (₨)</option>
                           <option value="USD">USD ($)</option>
@@ -514,12 +514,12 @@ export function Settings({ username, onLogout }: SettingsProps) {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Language</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Language</label>
                         <select
                           name="language"
                           value={systemSettings.language}
                           onChange={handleSystemChange}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
                         >
                           <option value="en">English</option>
                           <option value="es">Spanish</option>
@@ -537,9 +537,9 @@ export function Settings({ username, onLogout }: SettingsProps) {
                           name="autoBackup"
                           checked={systemSettings.autoBackup}
                           onChange={handleSystemChange}
-                          className="w-5 h-5 text-[#2563EB] border-gray-300 rounded focus:ring-[#2563EB]"
+                          className="w-5 h-5 text-[#2563EB] border-gray-300 dark:border-gray-600 rounded focus:ring-[#2563EB] dark:bg-gray-800 dark:checked:bg-[#2563EB]"
                         />
-                        <span className="ml-2 text-gray-700">Enable Automatic Backups</span>
+                        <span className="ml-2 text-gray-700 dark:text-gray-300">Enable Automatic Backups</span>
                       </label>
                     </div>
 

@@ -131,7 +131,7 @@ export function Login({ onLogin }: LoginProps) {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#2563EB] text-white py-3 rounded-lg font-medium hover:bg-[#1E40AF] transition-colors shadow-lg hover:shadow-xl disabled:bg-gray-400 disabled:cursor-not-allowed"
+              className="w-full bg-[#2563EB] dark:bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-[#1E40AF] dark:hover:bg-blue-700 transition-colors shadow-lg hover:shadow-xl disabled:bg-gray-400 dark:disabled:bg-gray-700 disabled:cursor-not-allowed disabled:text-gray-200 dark:disabled:text-gray-400"
             >
               {loading ? 'Signing in...' : 'Sign In'}
             </button>

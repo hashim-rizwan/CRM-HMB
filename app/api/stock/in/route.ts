@@ -17,15 +17,10 @@ export async function POST(request: NextRequest) {
     })
 
     if (!marble) {
-      marble = await prisma.marble.create({
-        data: {
-          barcode,
-          name: `Marble ${barcode}`,
-          color: 'Unknown',
-          size: 'Unknown',
-          quantity: 0,
-        },
-      })
+      return NextResponse.json(
+        { error: 'Marble with this barcode not found. Please add it first.' },
+        { status: 404 }
+      )
     }
 
     const updatedMarble = await prisma.marble.update({
@@ -34,8 +29,24 @@ export async function POST(request: NextRequest) {
         quantity: {
           increment: quantity,
         },
+        updatedAt: new Date(),
       },
     })
+
+    // Update status based on new quantity
+    let status = 'In Stock';
+    if (updatedMarble.quantity < 100) {
+      status = 'Low Stock';
+    } else if (updatedMarble.quantity === 0) {
+      status = 'Out of Stock';
+    }
+
+    if (updatedMarble.status !== status) {
+      await prisma.marble.update({
+        where: { id: marble.id },
+        data: { status },
+      });
+    }
 
     await prisma.stockTransaction.create({
       data: {

@@ -129,6 +129,7 @@ export default function App() {
           unreadNotificationCount={2}
           darkMode={darkMode}
           toggleDarkMode={toggleDarkMode}
+          showSearch={activeScreen === 'dashboard'}
         />
 
         {/* Scrollable Content */}

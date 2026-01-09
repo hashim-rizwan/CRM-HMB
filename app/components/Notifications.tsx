@@ -109,13 +109,13 @@ export function Notifications() {
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-xl font-semibold text-[#1F2937]">Notifications</h3>
-              <p className="text-sm text-gray-600 mt-1">
+              <h3 className="text-xl font-semibold text-[#1F2937] dark:text-white">Notifications</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                 Stay updated with inventory changes and alerts
               </p>
             </div>
             {unreadCount > 0 && (
-              <div className="px-4 py-2 bg-[#2563EB] text-white rounded-full text-sm font-medium">
+              <div className="px-4 py-2 bg-[#2563EB] dark:bg-blue-600 text-white rounded-full text-sm font-medium">
                 {unreadCount} Unread
               </div>
             )}
@@ -123,13 +123,13 @@ export function Notifications() {
         </div>
 
         {/* Notifications List */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="divide-y divide-gray-200">
+        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800">
+          <div className="divide-y divide-gray-200 dark:divide-gray-800">
             {mockNotifications.map((notification) => (
               <div
                 key={notification.id}
-                className={`p-6 transition-colors hover:bg-gray-50 ${
-                  !notification.read ? 'bg-blue-50' : ''
+                className={`p-6 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800 ${
+                  !notification.read ? 'bg-blue-50 dark:bg-gray-800' : ''
                 }`}
               >
                 <div className="flex gap-4">
@@ -148,17 +148,17 @@ export function Notifications() {
                       <p
                         className={`text-sm ${
                           !notification.read
-                            ? 'font-medium text-[#1F2937]'
-                            : 'text-gray-700'
+                            ? 'font-medium text-[#1F2937] dark:text-white'
+                            : 'text-gray-700 dark:text-gray-300'
                         }`}
                       >
                         {notification.message}
                       </p>
                       {!notification.read && (
-                        <div className="flex-shrink-0 w-2 h-2 bg-[#2563EB] rounded-full" />
+                        <div className="flex-shrink-0 w-2 h-2 bg-[#2563EB] dark:bg-blue-400 rounded-full" />
                       )}
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                       <Clock className="w-3 h-3" />
                       <span>{notification.timestamp}</span>
                     </div>
@@ -171,12 +171,12 @@ export function Notifications() {
 
         {/* Empty State (hidden when notifications exist) */}
         {mockNotifications.length === 0 && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Info className="w-8 h-8 text-gray-400" />
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-12 text-center">
+            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Info className="w-8 h-8 text-gray-400 dark:text-gray-500" />
             </div>
-            <h4 className="text-lg font-medium text-gray-900 mb-2">No Notifications</h4>
-            <p className="text-sm text-gray-500">
+            <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No Notifications</h4>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               You're all caught up! New notifications will appear here.
             </p>
           </div>

@@ -53,31 +53,31 @@ export function BarcodeManagement() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h3 className="text-xl font-semibold text-[#1F2937]">Barcode Management</h3>
-          <p className="text-sm text-gray-600 mt-1">View, print, and manage product barcodes</p>
+          <h3 className="text-xl font-semibold text-[#1F2937] dark:text-white">Barcode Management</h3>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">View, print, and manage product barcodes</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Barcode List */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+            <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800">
               {/* Search Bar */}
-              <div className="p-6 border-b border-gray-200">
+              <div className="p-6 border-b border-gray-200 dark:border-gray-800">
                 <input
                   type="text"
                   placeholder="Search by marble name or barcode..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
                 />
               </div>
 
               {/* Barcode Table */}
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-gray-50">
+                  <thead className="bg-gray-50 dark:bg-gray-800">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                         Marble Name
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -91,26 +91,26 @@ export function BarcodeManagement() {
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
                     {filteredBarcodes.map((item) => (
                       <tr
                         key={item.id}
-                        className={`hover:bg-gray-50 transition-colors cursor-pointer ${
-                          selectedBarcode?.id === item.id ? 'bg-blue-50' : ''
+                        className={`hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer ${
+                          selectedBarcode?.id === item.id ? 'bg-blue-50 dark:bg-gray-800' : ''
                         }`}
                         onClick={() => setSelectedBarcode(item)}
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">{item.marbleName}</div>
-                          <div className="text-sm text-gray-500">{item.marbleType}</div>
+                          <div className="text-sm font-medium text-gray-900 dark:text-white">{item.marbleName}</div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">{item.marbleType}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
                             <Barcode className="w-4 h-4 text-gray-400" />
-                            <span className="text-sm font-mono text-gray-900">{item.barcodeValue}</span>
+                            <span className="text-sm font-mono text-gray-900 dark:text-white">{item.barcodeValue}</span>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
                           {item.lastPrinted}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right">
@@ -120,7 +120,7 @@ export function BarcodeManagement() {
                                 e.stopPropagation();
                                 setSelectedBarcode(item);
                               }}
-                              className="p-2 text-[#2563EB] hover:bg-blue-50 rounded-lg transition-colors"
+                              className="p-2 text-[#2563EB] hover:bg-blue-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
                               title="View Barcode"
                             >
                               <Eye className="w-4 h-4" />
@@ -130,7 +130,7 @@ export function BarcodeManagement() {
                                 e.stopPropagation();
                                 handlePrintBarcode(item);
                               }}
-                              className="p-2 text-[#16A34A] hover:bg-green-50 rounded-lg transition-colors"
+                              className="p-2 text-[#16A34A] hover:bg-green-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
                               title="Print Barcode"
                             >
                               <Printer className="w-4 h-4" />
@@ -147,21 +147,21 @@ export function BarcodeManagement() {
 
           {/* Barcode Preview Panel */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 sticky top-8">
-              <h4 className="font-semibold text-[#1F2937] mb-4">Barcode Preview</h4>
+            <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-6 sticky top-8">
+              <h4 className="font-semibold text-[#1F2937] dark:text-white mb-4">Barcode Preview</h4>
 
               {selectedBarcode ? (
                 <div>
                   {/* Marble Info */}
-                  <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                    <p className="text-sm font-medium text-gray-700 mb-1">
+                  <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <p className="text-sm font-medium text-gray-700 dark:text-white mb-1">
                       {selectedBarcode.marbleName}
                     </p>
-                    <p className="text-xs text-gray-500">{selectedBarcode.marbleType}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{selectedBarcode.marbleType}</p>
                   </div>
 
                   {/* Barcode Display */}
-                  <div className="mb-6 p-6 bg-white border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center">
+                  <div className="mb-6 p-6 bg-white dark:bg-gray-800 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg flex flex-col items-center justify-center">
                     {/* Barcode Visualization (Code 128 style) */}
                     <div className="mb-4 flex items-center gap-0.5">
                       {/* Simulated barcode bars */}
@@ -181,15 +181,15 @@ export function BarcodeManagement() {
 
                     {/* Human-readable barcode */}
                     <div className="text-center">
-                      <p className="font-mono text-lg font-medium text-gray-900 mb-1">
+                      <p className="font-mono text-lg font-medium text-gray-900 dark:text-white mb-1">
                         {selectedBarcode.barcodeValue}
                       </p>
-                      <p className="text-xs text-gray-500">CODE 128</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">CODE 128</p>
                     </div>
                   </div>
 
                   {/* Info */}
-                  <div className="mb-6 text-sm text-gray-600">
+                  <div className="mb-6 text-sm text-gray-600 dark:text-gray-400">
                     <p className="mb-2">
                       <span className="font-medium">ID:</span> {selectedBarcode.id}
                     </p>
@@ -202,14 +202,14 @@ export function BarcodeManagement() {
                   <div className="space-y-3">
                     <button
                       onClick={handlePrintSelected}
-                      className="w-full px-4 py-3 bg-[#2563EB] text-white rounded-lg hover:bg-[#1E40AF] transition-colors flex items-center justify-center gap-2 font-medium"
+                      className="w-full px-4 py-3 bg-[#2563EB] dark:bg-blue-600 text-white rounded-lg hover:bg-[#1E40AF] dark:hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 font-medium"
                     >
                       <Printer className="w-5 h-5" />
                       Print Barcode
                     </button>
                     <button
                       onClick={handleDownloadBarcode}
-                      className="w-full px-4 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 font-medium"
+                      className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center justify-center gap-2 font-medium"
                     >
                       <Download className="w-5 h-5" />
                       Download
@@ -219,7 +219,7 @@ export function BarcodeManagement() {
               ) : (
                 <div className="text-center py-12">
                   <Barcode className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-sm text-gray-500">Select a barcode to preview</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Select a barcode to preview</p>
                 </div>
               )}
             </div>

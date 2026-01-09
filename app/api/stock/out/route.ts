@@ -36,8 +36,24 @@ export async function POST(request: NextRequest) {
         quantity: {
           decrement: quantity,
         },
+        updatedAt: new Date(),
       },
     })
+
+    // Update status based on new quantity
+    let status = 'In Stock';
+    if (updatedMarble.quantity < 100) {
+      status = 'Low Stock';
+    } else if (updatedMarble.quantity === 0) {
+      status = 'Out of Stock';
+    }
+
+    if (updatedMarble.status !== status) {
+      await prisma.marble.update({
+        where: { id: marble.id },
+        data: { status },
+      });
+    }
 
     await prisma.stockTransaction.create({
       data: {
@@ -46,6 +62,17 @@ export async function POST(request: NextRequest) {
         quantity,
       },
     })
+
+    // Create notification if stock is low
+    if (status === 'Low Stock' || status === 'Out of Stock') {
+      await prisma.notification.create({
+        data: {
+          type: 'low-stock',
+          message: `Low stock alert: ${marble.marbleType} ${marble.color} is ${status.toLowerCase()} (${updatedMarble.quantity} ${updatedMarble.unit} remaining)`,
+          read: false,
+        },
+      });
+    }
 
     return NextResponse.json({ success: true, marble: updatedMarble })
   } catch (error) {

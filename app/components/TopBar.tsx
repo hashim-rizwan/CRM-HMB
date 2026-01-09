@@ -22,9 +22,10 @@ interface TopBarProps {
   unreadNotificationCount?: number;
   darkMode?: boolean;
   toggleDarkMode?: () => void;
+  showSearch?: boolean;
 }
 
-export function TopBar({ title, searchQuery, setSearchQuery, username, onLogout, onNavigateToNotifications, unreadNotificationCount = 0, darkMode = false, toggleDarkMode }: TopBarProps) {
+export function TopBar({ title, searchQuery, setSearchQuery, username, onLogout, onNavigateToNotifications, unreadNotificationCount = 0, darkMode = false, toggleDarkMode, showSearch = false }: TopBarProps) {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -146,17 +147,19 @@ export function TopBar({ title, searchQuery, setSearchQuery, username, onLogout,
             </button>
           )}
 
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
-            <input
-              type="text"
-              placeholder="Search inventory..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg w-64 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:focus:ring-blue-500"
-            />
-          </div>
+          {/* Search - Only shown on Inventory Dashboard */}
+          {showSearch && (
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
+              <input
+                type="text"
+                placeholder="Search inventory..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg w-64 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:focus:ring-blue-500"
+              />
+            </div>
+          )}
 
           {/* Notifications */}
           <div className="relative" ref={notificationRef}>
