@@ -1,6 +1,8 @@
 'use client'
 
+import { useState, useEffect } from 'react';
 import { Package, TrendingUp, AlertTriangle, CheckCircle } from 'lucide-react';
+import { inventoryAPI } from '@/lib/api';
 
 interface InventoryItem {
   id: string;
@@ -61,14 +63,65 @@ const elasticSearch = (items: InventoryItem[], query: string): InventoryItem[] =
 };
 
 export function InventoryDashboard({ searchQuery = '' }: InventoryDashboardProps) {
-  // Filter inventory based on search query
-  const filteredInventory = elasticSearch(mockInventory, searchQuery);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [stats, setStats] = useState({
+    totalItems: 0,
+    totalQuantity: 0,
+    lowStockCount: 0,
+    outOfStockCount: 0,
+    totalInventoryValue: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchInventory();
+    fetchStats();
+  }, [searchQuery]);
+
+  const fetchInventory = async () => {
+    try {
+      setLoading(true);
+      const response = await inventoryAPI.getAll(searchQuery);
+      // Transform API data to match InventoryItem interface
+      const transformed = response.marbles.map((marble: any) => ({
+        id: marble.id.toString(),
+        marbleType: marble.marbleType,
+        color: marble.color,
+        quantity: marble.quantity,
+        unit: marble.unit,
+        location: marble.location,
+        costPrice: marble.costPrice || 0,
+        salePrice: marble.salePrice || 0,
+        status: marble.status as 'In Stock' | 'Low Stock' | 'Out of Stock',
+        lastUpdated: new Date(marble.updatedAt).toLocaleDateString(),
+      }));
+      setInventory(transformed);
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch inventory');
+      console.error('Error fetching inventory:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchStats = async () => {
+    try {
+      const response = await inventoryAPI.getStats();
+      setStats(response.stats);
+    } catch (err: any) {
+      console.error('Error fetching stats:', err);
+    }
+  };
+
+  // Filter inventory based on search query (client-side fallback)
+  const filteredInventory = elasticSearch(inventory, searchQuery);
   
-  const totalItems = filteredInventory.length;
-  const totalQuantity = filteredInventory.reduce((sum, item) => sum + item.quantity, 0);
-  const lowStockCount = filteredInventory.filter(item => item.status === 'Low Stock').length;
-  const outOfStockCount = filteredInventory.filter(item => item.status === 'Out of Stock').length;
-  const totalInventoryValue = filteredInventory.reduce((sum, item) => sum + (item.quantity * item.costPrice), 0);
+  const totalItems = stats.totalItems || filteredInventory.length;
+  const totalQuantity = stats.totalQuantity || filteredInventory.reduce((sum, item) => sum + item.quantity, 0);
+  const lowStockCount = stats.lowStockCount || filteredInventory.filter(item => item.status === 'Low Stock').length;
+  const outOfStockCount = stats.outOfStockCount || filteredInventory.filter(item => item.status === 'Out of Stock').length;
+  const totalInventoryValue = stats.totalInventoryValue || filteredInventory.reduce((sum, item) => sum + (item.quantity * item.costPrice), 0);
   const potentialRevenue = filteredInventory.reduce((sum, item) => sum + (item.quantity * item.salePrice), 0);
 
   const summaryCards = [

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Plus, Minus, Save, Trash2, Scan, Barcode } from 'lucide-react';
+import { stockAPI } from '@/lib/api';
 
 interface ManageStockProps {
   searchQuery?: string;
@@ -11,6 +12,8 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
   const [activeTab, setActiveTab] = useState<'add' | 'remove'>('add');
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [scannedBarcode, setScannedBarcode] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   const [addFormData, setAddFormData] = useState({
     marbleType: '',
@@ -33,35 +36,76 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
     notes: '',
   });
 
-  const handleAddSubmit = (e: React.FormEvent) => {
+  const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Adding stock:', addFormData);
-    setAddFormData({
-      marbleType: '',
-      color: '',
-      quantity: '',
-      unit: 'kg',
-      location: '',
-      supplier: '',
-      batchNumber: '',
-      costPrice: '',
-      salePrice: '',
-      notes: '',
-    });
-    alert('Stock added successfully!');
+    setLoading(true);
+    setError(null);
+
+    try {
+      await stockAPI.add({
+        marbleType: addFormData.marbleType,
+        color: addFormData.color,
+        quantity: parseFloat(addFormData.quantity),
+        unit: addFormData.unit,
+        location: addFormData.location,
+        supplier: addFormData.supplier || undefined,
+        batchNumber: addFormData.batchNumber || undefined,
+        costPrice: addFormData.costPrice ? parseFloat(addFormData.costPrice) : undefined,
+        salePrice: addFormData.salePrice ? parseFloat(addFormData.salePrice) : undefined,
+        notes: addFormData.notes || undefined,
+        barcode: scannedBarcode || undefined,
+      });
+
+      setAddFormData({
+        marbleType: '',
+        color: '',
+        quantity: '',
+        unit: 'kg',
+        location: '',
+        supplier: '',
+        batchNumber: '',
+        costPrice: '',
+        salePrice: '',
+        notes: '',
+      });
+      setScannedBarcode('');
+      alert('Stock added successfully!');
+    } catch (err: any) {
+      setError(err.message || 'Failed to add stock');
+      alert(err.message || 'Failed to add stock');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleRemoveSubmit = (e: React.FormEvent) => {
+  const handleRemoveSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Removing stock:', removeFormData);
-    setRemoveFormData({
-      marbleType: '',
-      quantity: '',
-      reason: '',
-      requestedBy: '',
-      notes: '',
-    });
-    alert('Stock removed successfully!');
+    setLoading(true);
+    setError(null);
+
+    try {
+      await stockAPI.remove({
+        marbleType: removeFormData.marbleType,
+        quantity: parseFloat(removeFormData.quantity),
+        reason: removeFormData.reason,
+        requestedBy: removeFormData.requestedBy || undefined,
+        notes: removeFormData.notes || undefined,
+      });
+
+      setRemoveFormData({
+        marbleType: '',
+        quantity: '',
+        reason: '',
+        requestedBy: '',
+        notes: '',
+      });
+      alert('Stock removed successfully!');
+    } catch (err: any) {
+      setError(err.message || 'Failed to remove stock');
+      alert(err.message || 'Failed to remove stock');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAddChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -408,10 +452,11 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
               </button>
               <button
                 type="submit"
-                className="px-6 py-2 bg-[#16A34A] text-white rounded-lg hover:bg-[#15803D] transition-colors flex items-center gap-2"
+                disabled={loading}
+                className="px-6 py-2 bg-[#16A34A] text-white rounded-lg hover:bg-[#15803D] transition-colors flex items-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
                 <Save className="w-4 h-4" />
-                Add Stock
+                {loading ? 'Adding...' : 'Add Stock'}
               </button>
             </div>
           </form>
@@ -540,10 +585,11 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-2 bg-[#DC2626] text-white rounded-lg hover:bg-[#B91C1C] transition-colors flex items-center gap-2"
+                    disabled={loading}
+                    className="px-6 py-2 bg-[#DC2626] text-white rounded-lg hover:bg-[#B91C1C] transition-colors flex items-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
                   >
                     <Trash2 className="w-4 h-4" />
-                    Remove Stock
+                    {loading ? 'Removing...' : 'Remove Stock'}
                   </button>
                 </div>
               </form>

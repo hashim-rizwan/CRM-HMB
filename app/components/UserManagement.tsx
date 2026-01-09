@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Users, Plus, Edit, Ban, Shield, UserCheck, X, Save } from 'lucide-react';
+import { userAPI } from '@/lib/api';
 
 interface User {
-  id: string;
-  name: string;
+  id: number;
+  fullName: string;
   email: string;
   role: 'Admin' | 'Staff';
   status: 'Active' | 'Disabled';
@@ -13,55 +14,9 @@ interface User {
   lastActive: string;
 }
 
-const mockUsers: User[] = [
-  {
-    id: '1',
-    name: 'John Doe',
-    email: 'john.doe@marblefactory.com',
-    role: 'Admin',
-    status: 'Active',
-    joinedDate: '2025-01-15',
-    lastActive: '2026-01-09 09:15 AM',
-  },
-  {
-    id: '2',
-    name: 'Jane Smith',
-    email: 'jane.smith@marblefactory.com',
-    role: 'Staff',
-    status: 'Active',
-    joinedDate: '2025-02-20',
-    lastActive: '2026-01-09 08:30 AM',
-  },
-  {
-    id: '3',
-    name: 'Michael Johnson',
-    email: 'michael.j@marblefactory.com',
-    role: 'Staff',
-    status: 'Active',
-    joinedDate: '2025-03-10',
-    lastActive: '2026-01-08 05:45 PM',
-  },
-  {
-    id: '4',
-    name: 'Sarah Williams',
-    email: 'sarah.w@marblefactory.com',
-    role: 'Admin',
-    status: 'Active',
-    joinedDate: '2025-01-25',
-    lastActive: '2026-01-09 07:20 AM',
-  },
-  {
-    id: '5',
-    name: 'Robert Brown',
-    email: 'robert.b@marblefactory.com',
-    role: 'Staff',
-    status: 'Disabled',
-    joinedDate: '2025-04-05',
-    lastActive: '2025-12-15 02:30 PM',
-  },
-];
-
 export function UserManagement() {
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -70,7 +25,35 @@ export function UserManagement() {
     email: '',
     role: 'Staff' as 'Admin' | 'Staff',
     password: '',
+    phone: '',
+    department: '',
   });
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const response = await userAPI.getAll();
+      const transformed = response.users.map((user: any) => ({
+        id: user.id,
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role,
+        status: user.status,
+        joinedDate: new Date(user.joinedDate).toLocaleDateString(),
+        lastActive: new Date(user.lastActive).toLocaleDateString() + ' ' + new Date(user.lastActive).toLocaleTimeString(),
+      }));
+      setUsers(transformed);
+    } catch (err: any) {
+      console.error('Error fetching users:', err);
+      alert('Failed to fetch users');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAddUser = () => {
     setModalMode('add');
@@ -82,18 +65,27 @@ export function UserManagement() {
     setModalMode('edit');
     setSelectedUser(user);
     setFormData({
-      name: user.name,
+      name: user.fullName,
       email: user.email,
       role: user.role,
       password: '',
+      phone: '',
+      department: '',
     });
     setShowModal(true);
   };
 
-  const handleDisableUser = (user: User) => {
+  const handleDisableUser = async (user: User) => {
     const action = user.status === 'Active' ? 'disable' : 'enable';
-    if (confirm(`Are you sure you want to ${action} ${user.name}?`)) {
-      alert(`User ${action}d successfully!`);
+    if (confirm(`Are you sure you want to ${action} ${user.fullName}?`)) {
+      try {
+        const newStatus = user.status === 'Active' ? 'Disabled' : 'Active';
+        await userAPI.updateStatus(user.id, newStatus);
+        await fetchUsers();
+        alert(`User ${action}d successfully!`);
+      } catch (err: any) {
+        alert(err.message || `Failed to ${action} user`);
+      }
     }
   };
 
@@ -104,13 +96,39 @@ export function UserManagement() {
     });
   };
 
-  const handleSubmit = () => {
-    if (modalMode === 'add') {
-      alert('User added successfully!');
-    } else {
-      alert('User updated successfully!');
+  const handleSubmit = async () => {
+    try {
+      if (modalMode === 'add') {
+        if (!formData.password) {
+          alert('Password is required for new users');
+          return;
+        }
+        await userAPI.create({
+          username: formData.email.split('@')[0], // Simple username generation
+          password: formData.password,
+          fullName: formData.name,
+          email: formData.email,
+          phone: formData.phone || undefined,
+          role: formData.role,
+          department: formData.department || undefined,
+        });
+        alert('User added successfully!');
+      } else if (selectedUser) {
+        await userAPI.update(selectedUser.id, {
+          fullName: formData.name,
+          email: formData.email,
+          phone: formData.phone || undefined,
+          role: formData.role,
+          department: formData.department || undefined,
+        });
+        alert('User updated successfully!');
+      }
+      setShowModal(false);
+      setFormData({ name: '', email: '', role: 'Staff', password: '', phone: '', department: '' });
+      await fetchUsers();
+    } catch (err: any) {
+      alert(err.message || 'Failed to save user');
     }
-    setShowModal(false);
   };
 
   const getRoleBadgeColor = (role: string) => {
@@ -150,7 +168,7 @@ export function UserManagement() {
               </div>
               <div>
                 <p className="text-sm text-gray-600">Total Users</p>
-                <p className="text-2xl font-semibold text-[#1F2937]">{mockUsers.length}</p>
+                <p className="text-2xl font-semibold text-[#1F2937]">{users.length}</p>
               </div>
             </div>
           </div>
@@ -163,7 +181,7 @@ export function UserManagement() {
               <div>
                 <p className="text-sm text-gray-600">Active Users</p>
                 <p className="text-2xl font-semibold text-[#1F2937]">
-                  {mockUsers.filter((u) => u.status === 'Active').length}
+                  {users.filter((u) => u.status === 'Active').length}
                 </p>
               </div>
             </div>
@@ -177,7 +195,7 @@ export function UserManagement() {
               <div>
                 <p className="text-sm text-gray-600">Administrators</p>
                 <p className="text-2xl font-semibold text-[#1F2937]">
-                  {mockUsers.filter((u) => u.role === 'Admin').length}
+                  {users.filter((u) => u.role === 'Admin').length}
                 </p>
               </div>
             </div>
@@ -210,19 +228,32 @@ export function UserManagement() {
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {mockUsers.map((user) => (
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {loading ? (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                          Loading users...
+                        </td>
+                      </tr>
+                    ) : users.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                          No users found
+                        </td>
+                      </tr>
+                    ) : (
+                      users.map((user) => (
                   <tr key={user.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-[#2563EB] rounded-full flex items-center justify-center text-white font-medium">
-                          {user.name
+                          {user.fullName
                             .split(' ')
                             .map((n) => n[0])
                             .join('')}
                         </div>
                         <div>
-                          <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                          <div className="text-sm font-medium text-gray-900">{user.fullName}</div>
                           <div className="text-xs text-gray-500">Joined {user.joinedDate}</div>
                         </div>
                       </div>
@@ -273,9 +304,10 @@ export function UserManagement() {
                         </button>
                       </div>
                     </td>
-                  </tr>
-                ))}
-              </tbody>
+                      </tr>
+                      ))
+                    )}
+                  </tbody>
             </table>
           </div>
         </div>
