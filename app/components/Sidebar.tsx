@@ -23,7 +23,7 @@ export function Sidebar({ activeScreen, setActiveScreen, darkMode = false }: Sid
     <div className="w-60 bg-[#661B0F] text-white flex flex-col h-screen">
       {/* Logo/Brand */}
       <div className="px-6 py-6 border-b border-[#4D140B]">
-        <h1 className="text-xl font-semibold">Marble Factory</h1>
+        <h1 className="text-xl font-semibold">Haqeeq Marbles</h1>
         <p className="text-sm text-red-100 mt-1">Inventory System</p>
       </div>
 
@@ -54,7 +54,7 @@ export function Sidebar({ activeScreen, setActiveScreen, darkMode = false }: Sid
 
       {/* Footer */}
       <div className="px-6 py-4 border-t border-[#4D140B]">
-        <p className="text-xs text-red-100">© 2026 Marble Factory</p>
+        <p className="text-xs text-red-100">© 2026 Haqeeq Marbles</p>
       </div>
     </div>
   );

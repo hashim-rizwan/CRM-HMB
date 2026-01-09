@@ -1,7 +1,7 @@
 {
   "name": "marble-inventory-system",
   "version": "1.0.0",
-  "description": "Marble Inventory System",
+  "description": "Haqeeq Marbles Inventory System",
   "main": "electron/main.js",
   "scripts": {
     "dev": "next dev",
@@ -41,7 +41,7 @@
   },
   "build": {
     "appId": "com.marble.inventory",
-    "productName": "Marble Inventory System",
+    "productName": "Haqeeq Marbles Inventory System",
     "directories": {
       "output": "dist"
     },
