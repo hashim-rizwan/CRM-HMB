@@ -17,16 +17,24 @@ export default function App() {
   const [username, setUsername] = useState('')
   const [activeScreen, setActiveScreen] = useState('dashboard')
   const [searchQuery, setSearchQuery] = useState('')
+  const [darkMode, setDarkMode] = useState(false)
 
   // Check if user is already logged in (from localStorage)
   useEffect(() => {
     const savedUsername = localStorage.getItem('username')
     const savedUserData = localStorage.getItem('userData')
+    const savedDarkMode = localStorage.getItem('darkMode')
     
     if (savedUsername) {
       // Verify the user still exists and is active (optional: can add API check)
       setUsername(savedUsername)
       setIsAuthenticated(true)
+    }
+
+    // Load dark mode preference
+    if (savedDarkMode === 'true') {
+      setDarkMode(true)
+      document.documentElement.classList.add('dark')
     }
   }, [])
 
@@ -43,6 +51,17 @@ export default function App() {
     setIsAuthenticated(false)
     setUsername('')
     localStorage.removeItem('username')
+  }
+
+  const toggleDarkMode = () => {
+    const newDarkMode = !darkMode
+    setDarkMode(newDarkMode)
+    localStorage.setItem('darkMode', String(newDarkMode))
+    if (newDarkMode) {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
   }
 
   const getScreenTitle = () => {
@@ -93,9 +112,9 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen bg-[#F9FAFB] overflow-hidden">
+    <div className="flex h-screen bg-[#F9FAFB] dark:bg-black overflow-hidden">
       {/* Sidebar - Fixed Width */}
-      <Sidebar activeScreen={activeScreen} setActiveScreen={setActiveScreen} />
+      <Sidebar activeScreen={activeScreen} setActiveScreen={setActiveScreen} darkMode={darkMode} />
 
       {/* Main Content Area - Flexible */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -108,10 +127,12 @@ export default function App() {
           onLogout={handleLogout}
           onNavigateToNotifications={() => setActiveScreen('notifications')}
           unreadNotificationCount={2}
+          darkMode={darkMode}
+          toggleDarkMode={toggleDarkMode}
         />
 
         {/* Scrollable Content */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto bg-[#F9FAFB] dark:bg-black">
           {renderContent()}
         </main>
       </div>

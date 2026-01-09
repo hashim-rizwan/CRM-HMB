@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react';
-import { Bell, Search, User, LogOut, AlertTriangle, CheckCircle, Info, Package, Clock, X } from 'lucide-react';
+import { Bell, Search, User, LogOut, AlertTriangle, CheckCircle, Info, Package, Clock, X, Moon, Sun } from 'lucide-react';
 import { notificationAPI } from '@/lib/api';
 
 interface Notification {
@@ -20,9 +20,11 @@ interface TopBarProps {
   onLogout?: () => void;
   onNavigateToNotifications?: () => void;
   unreadNotificationCount?: number;
+  darkMode?: boolean;
+  toggleDarkMode?: () => void;
 }
 
-export function TopBar({ title, searchQuery, setSearchQuery, username, onLogout, onNavigateToNotifications, unreadNotificationCount = 0 }: TopBarProps) {
+export function TopBar({ title, searchQuery, setSearchQuery, username, onLogout, onNavigateToNotifications, unreadNotificationCount = 0, darkMode = false, toggleDarkMode }: TopBarProps) {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -114,11 +116,11 @@ export function TopBar({ title, searchQuery, setSearchQuery, username, onLogout,
 
   const unreadCount = notifications.filter(n => !n.read).length;
   return (
-    <div className="bg-white border-b border-gray-200 px-8 py-4">
+    <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-8 py-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold text-[#1F2937]">{title}</h2>
-          <p className="text-sm text-gray-500 mt-1">
+          <h2 className="text-2xl font-semibold text-[#1F2937] dark:text-white">{title}</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             {new Date().toLocaleDateString('en-US', { 
               weekday: 'long', 
               year: 'numeric', 
@@ -129,15 +131,30 @@ export function TopBar({ title, searchQuery, setSearchQuery, username, onLogout,
         </div>
 
         <div className="flex items-center gap-4">
+          {/* Dark Mode Toggle */}
+          {toggleDarkMode && (
+            <button
+              onClick={toggleDarkMode}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+              title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {darkMode ? (
+                <Sun className="w-5 h-5 text-gray-600 dark:text-yellow-400" />
+              ) : (
+                <Moon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+              )}
+            </button>
+          )}
+
           {/* Search */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
             <input
               type="text"
               placeholder="Search inventory..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg w-64 text-sm focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+              className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg w-64 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:focus:ring-blue-500"
             />
           </div>
 
@@ -145,9 +162,9 @@ export function TopBar({ title, searchQuery, setSearchQuery, username, onLogout,
           <div className="relative" ref={notificationRef}>
             <button 
               onClick={() => setShowNotifications(!showNotifications)}
-              className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="relative p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
             >
-              <Bell className="w-5 h-5 text-gray-600" />
+              <Bell className="w-5 h-5 text-gray-600 dark:text-gray-300" />
               {unreadCount > 0 && (
                 <span className="absolute top-1 right-1 w-2 h-2 bg-[#DC2626] rounded-full"></span>
               )}
@@ -155,13 +172,13 @@ export function TopBar({ title, searchQuery, setSearchQuery, username, onLogout,
 
             {/* Notifications Dropdown */}
             {showNotifications && (
-              <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-[600px] flex flex-col">
+              <div className="absolute right-0 mt-2 w-96 bg-white dark:bg-gray-900 rounded-lg shadow-lg border border-gray-200 dark:border-gray-800 z-50 max-h-[600px] flex flex-col">
                 {/* Header */}
-                <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+                <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
                   <div>
-                    <h3 className="text-sm font-semibold text-[#1F2937]">Notifications</h3>
+                    <h3 className="text-sm font-semibold text-[#1F2937] dark:text-white">Notifications</h3>
                     {unreadCount > 0 && (
-                      <p className="text-xs text-gray-500 mt-0.5">{unreadCount} unread</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{unreadCount} unread</p>
                     )}
                   </div>
                   {onNavigateToNotifications && (
@@ -170,7 +187,7 @@ export function TopBar({ title, searchQuery, setSearchQuery, username, onLogout,
                         setShowNotifications(false);
                         onNavigateToNotifications();
                       }}
-                      className="text-xs text-[#2563EB] hover:text-[#1E40AF] font-medium"
+                      className="text-xs text-[#2563EB] dark:text-blue-400 hover:text-[#1E40AF] dark:hover:text-blue-300 font-medium"
                     >
                       View All
                     </button>
@@ -180,22 +197,22 @@ export function TopBar({ title, searchQuery, setSearchQuery, username, onLogout,
                 {/* Notifications List */}
                 <div className="overflow-y-auto flex-1">
                   {loadingNotifications ? (
-                    <div className="px-4 py-8 text-center text-sm text-gray-500">
+                    <div className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
                       Loading notifications...
                     </div>
                   ) : notifications.length === 0 ? (
                     <div className="px-4 py-8 text-center">
-                      <Info className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                      <p className="text-sm text-gray-500">No notifications</p>
+                      <Info className="w-8 h-8 text-gray-400 dark:text-gray-500 mx-auto mb-2" />
+                      <p className="text-sm text-gray-500 dark:text-gray-400">No notifications</p>
                     </div>
                   ) : (
-                    <div className="divide-y divide-gray-100">
+                    <div className="divide-y divide-gray-100 dark:divide-gray-800">
                       {notifications.slice(0, 10).map((notification) => (
                         <div
                           key={notification.id}
                           onClick={() => !notification.read && handleMarkAsRead(notification.id)}
-                          className={`px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer ${
-                            !notification.read ? 'bg-blue-50' : ''
+                          className={`px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer ${
+                            !notification.read ? 'bg-blue-50 dark:bg-gray-800' : ''
                           }`}
                         >
                           <div className="flex gap-3">
@@ -206,21 +223,21 @@ export function TopBar({ title, searchQuery, setSearchQuery, username, onLogout,
                               <p
                                 className={`text-sm ${
                                   !notification.read
-                                    ? 'font-medium text-[#1F2937]'
-                                    : 'text-gray-700'
+                                    ? 'font-medium text-[#1F2937] dark:text-white'
+                                    : 'text-gray-700 dark:text-gray-300'
                                 }`}
                               >
                                 {notification.message}
                               </p>
                               <div className="flex items-center gap-1.5 mt-1">
-                                <Clock className="w-3 h-3 text-gray-400" />
-                                <span className="text-xs text-gray-500">
+                                <Clock className="w-3 h-3 text-gray-400 dark:text-gray-500" />
+                                <span className="text-xs text-gray-500 dark:text-gray-400">
                                   {formatTimestamp(notification.createdAt)}
                                 </span>
                               </div>
                             </div>
                             {!notification.read && (
-                              <div className="flex-shrink-0 w-2 h-2 bg-[#2563EB] rounded-full mt-1.5" />
+                              <div className="flex-shrink-0 w-2 h-2 bg-[#2563EB] dark:bg-blue-400 rounded-full mt-1.5" />
                             )}
                           </div>
                         </div>
@@ -236,27 +253,27 @@ export function TopBar({ title, searchQuery, setSearchQuery, username, onLogout,
           <div className="relative" ref={menuRef}>
             <button 
               onClick={() => setShowUserMenu(!showUserMenu)}
-              className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="flex items-center gap-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             >
-              <div className="w-8 h-8 bg-[#2563EB] rounded-full flex items-center justify-center">
+              <div className="w-8 h-8 bg-[#2563EB] dark:bg-blue-600 rounded-full flex items-center justify-center">
                 <User className="w-5 h-5 text-white" />
               </div>
-              <span className="text-sm font-medium text-[#1F2937]">{username || 'Admin'}</span>
+              <span className="text-sm font-medium text-[#1F2937] dark:text-white">{username || 'Admin'}</span>
             </button>
             
             {/* User Menu Dropdown */}
             {showUserMenu && onLogout && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
-                <div className="px-4 py-2 border-b border-gray-200">
-                  <p className="text-sm font-medium text-[#1F2937]">{username || 'Admin'}</p>
-                  <p className="text-xs text-gray-500">Logged in</p>
+              <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-900 rounded-lg shadow-lg border border-gray-200 dark:border-gray-800 py-2 z-50">
+                <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-800">
+                  <p className="text-sm font-medium text-[#1F2937] dark:text-white">{username || 'Admin'}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Logged in</p>
                 </div>
                 <button
                   onClick={() => {
                     onLogout();
                     setShowUserMenu(false);
                   }}
-                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                 >
                   <LogOut className="w-4 h-4" />
                   Logout

@@ -147,64 +147,64 @@ export function InventoryDashboard({ searchQuery = '' }: InventoryDashboardProps
         {summaryCards.map((card, index) => {
           const Icon = card.icon;
           return (
-            <div key={index} className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+            <div key={index} className="bg-white dark:bg-gray-900 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-800">
               <div className="flex items-start justify-between mb-4">
                 <div className={`${card.color} p-3 rounded-lg`}>
                   <Icon className="w-6 h-6 text-white" />
                 </div>
               </div>
-              <h3 className="text-sm text-gray-600 mb-1">{card.title}</h3>
-              <p className="text-3xl font-semibold text-[#1F2937] mb-2">{card.value}</p>
-              <p className="text-xs text-gray-500">{card.change}</p>
+              <h3 className="text-sm text-gray-600 dark:text-gray-400 mb-1">{card.title}</h3>
+              <p className="text-3xl font-semibold text-[#1F2937] dark:text-white mb-2">{card.value}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{card.change}</p>
             </div>
           );
         })}
       </div>
 
       {/* Inventory Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-[#1F2937]">Current Inventory</h3>
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800">
+          <h3 className="text-lg font-semibold text-[#1F2937] dark:text-white">Current Inventory</h3>
         </div>
         
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 sticky top-0">
+            <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Marble Type</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Color</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cost Price</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sale Price</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Updated</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">ID</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Marble Type</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Color</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Quantity</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Cost Price</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Sale Price</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Location</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Last Updated</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
               {filteredInventory.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={9} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
                     No inventory items found matching "{searchQuery}"
                   </td>
                 </tr>
               ) : (
                 filteredInventory.map((item) => (
-                <tr key={item.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1F2937]">{item.id}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.marbleType}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{item.color}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.quantity.toLocaleString()} {item.unit}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{`PKR ${item.costPrice}/${item.unit}`}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#16A34A]">{`PKR ${item.salePrice}/${item.unit}`}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{item.location}</td>
+                <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1F2937] dark:text-white">{item.id}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{item.marbleType}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">{item.color}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{item.quantity.toLocaleString()} {item.unit}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{`PKR ${item.costPrice}/${item.unit}`}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#16A34A] dark:text-green-400">{`PKR ${item.salePrice}/${item.unit}`}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">{item.location}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(item.status)}`}>
                       {item.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.lastUpdated}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{item.lastUpdated}</td>
                 </tr>
                 ))
               )}
