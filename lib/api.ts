@@ -142,6 +142,22 @@ export const userAPI = {
       method: 'PATCH',
       body: JSON.stringify({ status }),
     }),
+
+  // Profile APIs for current user
+  getProfile: (username: string) =>
+    apiRequest<{ success: boolean; user: any }>(`/users/profile?username=${encodeURIComponent(username)}`),
+
+  updateProfile: (username: string, data: {
+    fullName?: string;
+    email?: string;
+    phone?: string;
+    role?: string;
+    department?: string;
+  }) =>
+    apiRequest<{ success: boolean; user: any }>('/users/profile', {
+      method: 'PUT',
+      body: JSON.stringify({ username, ...data }),
+    }),
 };
 
 // Notifications API
@@ -168,6 +184,12 @@ export const authAPI = {
     apiRequest<{ success: boolean; user: any }>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ username, password }),
+    }),
+
+  changePassword: (username: string, currentPassword: string, newPassword: string) =>
+    apiRequest<{ success: boolean; message: string }>('/users/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ username, currentPassword, newPassword }),
     }),
 };
 

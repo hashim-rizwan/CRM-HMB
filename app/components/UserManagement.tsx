@@ -145,11 +145,15 @@ export function UserManagement() {
   };
 
   const getRoleBadgeColor = (role: string) => {
-    return role === 'Admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800';
+    return role === 'Admin' 
+      ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300' 
+      : 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300';
   };
 
   const getStatusBadgeColor = (status: string) => {
-    return status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
+    return status === 'Active' 
+      ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' 
+      : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300';
   };
 
   return (
@@ -176,8 +180,8 @@ export function UserManagement() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-6">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Users className="w-6 h-6 text-[#2563EB]" />
+              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                <Users className="w-6 h-6 text-[#2563EB] dark:text-blue-400" />
               </div>
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">Total Users</p>
@@ -188,12 +192,12 @@ export function UserManagement() {
 
           <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-6">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <UserCheck className="w-6 h-6 text-[#16A34A]" />
+              <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+                <UserCheck className="w-6 h-6 text-[#16A34A] dark:text-green-400" />
               </div>
               <div>
-                <p className="text-sm text-gray-600">Active Users</p>
-                <p className="text-2xl font-semibold text-[#1F2937]">
+                <p className="text-sm text-gray-600 dark:text-gray-400">Active Users</p>
+                <p className="text-2xl font-semibold text-[#1F2937] dark:text-white">
                   {users.filter((u) => u.status === 'Active').length}
                 </p>
               </div>
@@ -202,12 +206,12 @@ export function UserManagement() {
 
           <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-6">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <Shield className="w-6 h-6 text-purple-600" />
+              <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
+                <Shield className="w-6 h-6 text-purple-600 dark:text-purple-400" />
               </div>
               <div>
-                <p className="text-sm text-gray-600">Administrators</p>
-                <p className="text-2xl font-semibold text-[#1F2937]">
+                <p className="text-sm text-gray-600 dark:text-gray-400">Administrators</p>
+                <p className="text-2xl font-semibold text-[#1F2937] dark:text-white">
                   {users.filter((u) => u.role === 'Admin').length}
                 </p>
               </div>
@@ -236,7 +240,7 @@ export function UserManagement() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Last Active
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -299,7 +303,7 @@ export function UserManagement() {
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => handleEditUser(user)}
-                          className="p-2 text-[#2563EB] hover:bg-blue-50 rounded-lg transition-colors"
+                          className="p-2 text-[#2563EB] dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
                           title="Edit User"
                         >
                           <Edit className="w-4 h-4" />
@@ -308,8 +312,8 @@ export function UserManagement() {
                           onClick={() => handleDisableUser(user)}
                           className={`p-2 rounded-lg transition-colors ${
                             user.status === 'Active'
-                              ? 'text-[#DC2626] hover:bg-red-50'
-                              : 'text-[#16A34A] hover:bg-green-50'
+                              ? 'text-[#DC2626] dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30'
+                              : 'text-[#16A34A] dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30'
                           }`}
                           title={user.status === 'Active' ? 'Disable User' : 'Enable User'}
                         >
@@ -336,7 +340,7 @@ export function UserManagement() {
               </h3>
               <button
                 onClick={() => setShowModal(false)}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -424,10 +428,10 @@ export function UserManagement() {
                       value={formData.confirmPassword}
                       onChange={handleFormChange}
                       placeholder="Confirm password"
-                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] ${
+                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white ${
                         formData.confirmPassword && formData.password !== formData.confirmPassword
-                          ? 'border-red-500 focus:ring-red-500'
-                          : 'border-gray-300'
+                          ? 'border-red-500 dark:border-red-500 focus:ring-red-500'
+                          : 'border-gray-300 dark:border-gray-700'
                       }`}
                     />
                     {formData.confirmPassword && formData.password !== formData.confirmPassword && (

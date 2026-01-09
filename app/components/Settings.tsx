@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { User, Bell, Lock, Database, Printer, Scan, Save, LogOut } from 'lucide-react';
+import { userAPI, authAPI } from '@/lib/api';
 
 interface SettingsProps {
   username: string;
@@ -10,13 +11,17 @@ interface SettingsProps {
 
 export function Settings({ username, onLogout }: SettingsProps) {
   const [activeTab, setActiveTab] = useState('profile');
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   
   const [profileData, setProfileData] = useState({
-    fullName: 'John Doe',
-    email: 'john.doe@marblefactory.com',
-    phone: '+1 (555) 123-4567',
-    role: 'Warehouse Manager',
-    department: 'Inventory Management',
+    fullName: '',
+    email: '',
+    phone: '',
+    role: '',
+    department: '',
   });
 
   const [securityData, setSecurityData] = useState({
@@ -24,6 +29,9 @@ export function Settings({ username, onLogout }: SettingsProps) {
     newPassword: '',
     confirmPassword: '',
   });
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
 
   const [notificationSettings, setNotificationSettings] = useState({
     lowStock: true,
@@ -88,17 +96,106 @@ export function Settings({ username, onLogout }: SettingsProps) {
     });
   };
 
-  const handleSaveProfile = () => {
-    alert('Profile updated successfully!');
+  // Fetch profile data on component mount
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!username) return;
+      
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await userAPI.getProfile(username);
+        if (response.success && response.user) {
+          setProfileData({
+            fullName: response.user.fullName || '',
+            email: response.user.email || '',
+            phone: response.user.phone || '',
+            role: response.user.role || '',
+            department: response.user.department || '',
+          });
+        }
+      } catch (err: any) {
+        setError(err.message || 'Failed to load profile');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, [username]);
+
+  const handleSaveProfile = async () => {
+    if (!username) return;
+
+    setSaving(true);
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      const response = await userAPI.updateProfile(username, {
+        fullName: profileData.fullName,
+        email: profileData.email,
+        phone: profileData.phone,
+        role: profileData.role,
+        department: profileData.department,
+      });
+
+      if (response.success) {
+        setSuccessMessage('Profile updated successfully!');
+        // Clear success message after 3 seconds
+        setTimeout(() => setSuccessMessage(null), 3000);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to update profile');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleChangePassword = () => {
-    if (securityData.newPassword !== securityData.confirmPassword) {
-      alert('Passwords do not match!');
+  const handleChangePassword = async () => {
+    // Reset messages
+    setPasswordError(null);
+    setPasswordSuccess(null);
+
+    // Validation: Check if all fields are filled
+    if (!securityData.currentPassword || !securityData.newPassword || !securityData.confirmPassword) {
+      setPasswordError('All fields are required');
       return;
     }
-    alert('Password changed successfully!');
-    setSecurityData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+
+    // Validation: Check if new password and confirm password match
+    if (securityData.newPassword !== securityData.confirmPassword) {
+      setPasswordError('New password and confirm password do not match');
+      return;
+    }
+
+    // Validation: Check if new password is not empty
+    if (securityData.newPassword.length === 0) {
+      setPasswordError('New password cannot be empty');
+      return;
+    }
+
+    setChangingPassword(true);
+    setPasswordError(null);
+
+    try {
+      const response = await authAPI.changePassword(
+        username,
+        securityData.currentPassword,
+        securityData.newPassword
+      );
+
+      if (response.success) {
+        setPasswordSuccess('Password changed successfully!');
+        setSecurityData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+        // Clear success message after 3 seconds
+        setTimeout(() => setPasswordSuccess(null), 3000);
+      }
+    } catch (err: any) {
+      setPasswordError(err.message || 'Failed to change password. Please check your current password.');
+    } finally {
+      setChangingPassword(false);
+    }
   };
 
   const tabs = [
@@ -158,6 +255,22 @@ export function Settings({ username, onLogout }: SettingsProps) {
               {activeTab === 'profile' && (
                 <div>
                   <h4 className="text-lg font-semibold text-[#1F2937] dark:text-white mb-6">Profile Information</h4>
+                  
+                  {loading && (
+                    <div className="mb-4 text-sm text-gray-600 dark:text-gray-400">Loading profile...</div>
+                  )}
+
+                  {error && (
+                    <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-400">
+                      {error}
+                    </div>
+                  )}
+
+                  {successMessage && (
+                    <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-sm text-green-700 dark:text-green-400">
+                      {successMessage}
+                    </div>
+                  )}
                   
                   <div className="space-y-4 mb-6">
                     <div>
@@ -219,10 +332,11 @@ export function Settings({ username, onLogout }: SettingsProps) {
 
                   <button
                     onClick={handleSaveProfile}
-                    className="px-6 py-2 bg-[#2563EB] dark:bg-blue-600 text-white rounded-lg hover:bg-[#1E40AF] dark:hover:bg-blue-700 transition-colors flex items-center gap-2"
+                    disabled={saving || loading}
+                    className="px-6 py-2 bg-[#2563EB] dark:bg-blue-600 text-white rounded-lg hover:bg-[#1E40AF] dark:hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Save className="w-4 h-4" />
-                    Save Changes
+                    {saving ? 'Saving...' : 'Save Changes'}
                   </button>
                 </div>
               )}
@@ -231,6 +345,18 @@ export function Settings({ username, onLogout }: SettingsProps) {
               {activeTab === 'security' && (
                 <div>
                   <h4 className="text-lg font-semibold text-[#1F2937] dark:text-white mb-6">Change Password</h4>
+                  
+                  {passwordError && (
+                    <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-400">
+                      {passwordError}
+                    </div>
+                  )}
+
+                  {passwordSuccess && (
+                    <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-sm text-green-700 dark:text-green-400">
+                      {passwordSuccess}
+                    </div>
+                  )}
                   
                   <div className="space-y-4 mb-6 max-w-md">
                     <div>
@@ -241,6 +367,7 @@ export function Settings({ username, onLogout }: SettingsProps) {
                         value={securityData.currentPassword}
                         onChange={handleSecurityChange}
                         className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+                        placeholder="Enter your current password"
                       />
                     </div>
 
@@ -251,7 +378,12 @@ export function Settings({ username, onLogout }: SettingsProps) {
                         name="newPassword"
                         value={securityData.newPassword}
                         onChange={handleSecurityChange}
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 dark:bg-gray-800 dark:text-white ${
+                          securityData.confirmPassword && securityData.newPassword !== securityData.confirmPassword
+                            ? 'border-red-500 dark:border-red-500 focus:ring-red-500'
+                            : 'border-gray-300 dark:border-gray-700 focus:ring-[#2563EB]'
+                        }`}
+                        placeholder="Enter your new password"
                       />
                     </div>
 
@@ -262,16 +394,30 @@ export function Settings({ username, onLogout }: SettingsProps) {
                         name="confirmPassword"
                         value={securityData.confirmPassword}
                         onChange={handleSecurityChange}
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 dark:bg-gray-800 dark:text-white ${
+                          securityData.confirmPassword && securityData.newPassword !== securityData.confirmPassword
+                            ? 'border-red-500 dark:border-red-500 focus:ring-red-500'
+                            : securityData.confirmPassword && securityData.newPassword === securityData.confirmPassword
+                            ? 'border-green-500 dark:border-green-500 focus:ring-green-500'
+                            : 'border-gray-300 dark:border-gray-700 focus:ring-[#2563EB]'
+                        }`}
+                        placeholder="Confirm your new password"
                       />
+                      {securityData.confirmPassword && securityData.newPassword !== securityData.confirmPassword && (
+                        <p className="text-xs text-red-500 dark:text-red-400 mt-1">Passwords do not match</p>
+                      )}
+                      {securityData.confirmPassword && securityData.newPassword === securityData.confirmPassword && securityData.newPassword.length > 0 && (
+                        <p className="text-xs text-green-500 dark:text-green-400 mt-1">Passwords match</p>
+                      )}
                     </div>
                   </div>
 
                   <button
                     onClick={handleChangePassword}
-                    className="px-6 py-2 bg-[#2563EB] text-white rounded-lg hover:bg-[#1E40AF] transition-colors"
+                    disabled={changingPassword}
+                    className="px-6 py-2 bg-[#2563EB] dark:bg-blue-600 text-white rounded-lg hover:bg-[#1E40AF] dark:hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Update Password
+                    {changingPassword ? 'Updating Password...' : 'Update Password'}
                   </button>
                 </div>
               )}
