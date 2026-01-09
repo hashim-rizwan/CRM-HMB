@@ -17,16 +17,6 @@ interface InventoryItem {
   lastUpdated: string;
 }
 
-const mockInventory: InventoryItem[] = [
-  { id: '001', marbleType: 'Carrara', color: 'White', quantity: 2450, unit: 'kg', location: 'A-01', costPrice: 85, salePrice: 120, status: 'In Stock', lastUpdated: '2026-01-08' },
-  { id: '002', marbleType: 'Calacatta', color: 'White/Gold', quantity: 850, unit: 'kg', location: 'A-02', costPrice: 150, salePrice: 210, status: 'In Stock', lastUpdated: '2026-01-07' },
-  { id: '003', marbleType: 'Emperador', color: 'Brown', quantity: 320, unit: 'kg', location: 'B-01', costPrice: 95, salePrice: 135, status: 'Low Stock', lastUpdated: '2026-01-08' },
-  { id: '004', marbleType: 'Nero Marquina', color: 'Black', quantity: 1680, unit: 'kg', location: 'B-02', costPrice: 110, salePrice: 160, status: 'In Stock', lastUpdated: '2026-01-06' },
-  { id: '005', marbleType: 'Crema Marfil', color: 'Beige', quantity: 150, unit: 'kg', location: 'C-01', costPrice: 75, salePrice: 110, status: 'Low Stock', lastUpdated: '2026-01-08' },
-  { id: '006', marbleType: 'Rosso Verona', color: 'Red', quantity: 920, unit: 'kg', location: 'C-02', costPrice: 120, salePrice: 175, status: 'In Stock', lastUpdated: '2026-01-05' },
-  { id: '007', marbleType: 'Verde Guatemala', color: 'Green', quantity: 0, unit: 'kg', location: 'D-01', costPrice: 140, salePrice: 200, status: 'Out of Stock', lastUpdated: '2026-01-03' },
-  { id: '008', marbleType: 'Statuario', color: 'White/Grey', quantity: 1200, unit: 'kg', location: 'D-02', costPrice: 180, salePrice: 260, status: 'In Stock', lastUpdated: '2026-01-08' },
-];
 
 interface InventoryDashboardProps {
   searchQuery?: string;

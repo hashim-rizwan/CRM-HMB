@@ -3,33 +3,7 @@
 import { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { Download, Calendar, Filter } from 'lucide-react';
-
-const monthlyData = [
-  { month: 'Jul', added: 3200, removed: 2800, net: 400 },
-  { month: 'Aug', added: 2900, removed: 3100, net: -200 },
-  { month: 'Sep', added: 3500, removed: 2900, net: 600 },
-  { month: 'Oct', added: 4100, removed: 3400, net: 700 },
-  { month: 'Nov', added: 3800, removed: 3600, net: 200 },
-  { month: 'Dec', added: 4500, removed: 4200, net: 300 },
-];
-
-const usageByType = [
-  { type: 'Carrara', usage: 2840, percentage: 28 },
-  { type: 'Calacatta', usage: 1920, percentage: 19 },
-  { type: 'Emperador', usage: 1530, percentage: 15 },
-  { type: 'Nero Marquina', usage: 1430, percentage: 14 },
-  { type: 'Statuario', usage: 1210, percentage: 12 },
-  { type: 'Others', usage: 1270, percentage: 12 },
-];
-
-const trendData = [
-  { month: 'Jul', inventory: 8200 },
-  { month: 'Aug', inventory: 8000 },
-  { month: 'Sep', inventory: 8600 },
-  { month: 'Oct', inventory: 9300 },
-  { month: 'Nov', inventory: 9500 },
-  { month: 'Dec', inventory: 9800 },
-];
+import { reportsAPI } from '@/lib/api';
 
 interface MonthlyReportProps {
   searchQuery?: string;
@@ -39,6 +13,10 @@ export function MonthlyReport({ searchQuery = '' }: MonthlyReportProps) {
   const [selectedMonth, setSelectedMonth] = useState('December 2025');
   const [reportType, setReportType] = useState('usage');
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [monthlyData, setMonthlyData] = useState<any[]>([]);
+  const [usageByType, setUsageByType] = useState<any[]>([]);
+  const [trendData, setTrendData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const checkDarkMode = () => {
@@ -49,6 +27,28 @@ export function MonthlyReport({ searchQuery = '' }: MonthlyReportProps) {
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     return () => observer.disconnect();
   }, []);
+
+  useEffect(() => {
+    fetchReportData();
+  }, [selectedMonth]);
+
+  const fetchReportData = async () => {
+    try {
+      setLoading(true);
+      const response = await reportsAPI.getMonthly(selectedMonth);
+      setMonthlyData(response.monthlyData || []);
+      setUsageByType(response.usageByType || []);
+      setTrendData(response.trendData || []);
+    } catch (err) {
+      console.error('Error fetching report data:', err);
+      // Fallback to empty arrays
+      setMonthlyData([]);
+      setUsageByType([]);
+      setTrendData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleExport = () => {
     alert('Exporting report as PDF...');

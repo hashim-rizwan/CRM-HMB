@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Plus, Minus, Save, Trash2, Scan, Barcode } from 'lucide-react';
-import { stockAPI } from '@/lib/api';
+import { stockAPI, inventoryAPI } from '@/lib/api';
 
 interface ManageStockProps {
   searchQuery?: string;
@@ -14,6 +14,7 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
   const [scannedBarcode, setScannedBarcode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [inventory, setInventory] = useState<any[]>([]);
   
   const [addFormData, setAddFormData] = useState({
     marbleType: '',
@@ -69,6 +70,11 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
         notes: '',
       });
       setScannedBarcode('');
+      
+      // Refresh inventory data after adding stock
+      const response = await inventoryAPI.getAll();
+      setInventory(response.marbles || []);
+      
       alert('Stock added successfully!');
     } catch (err: any) {
       setError(err.message || 'Failed to add stock');
@@ -99,6 +105,11 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
         requestedBy: '',
         notes: '',
       });
+      
+      // Refresh inventory data after removing stock
+      const response = await inventoryAPI.getAll();
+      setInventory(response.marbles || []);
+      
       alert('Stock removed successfully!');
     } catch (err: any) {
       setError(err.message || 'Failed to remove stock');
@@ -122,30 +133,70 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
     });
   };
 
-  const marbleTypes = [
-    'Carrara',
-    'Calacatta',
-    'Emperador',
-    'Nero Marquina',
-    'Crema Marfil',
-    'Rosso Verona',
-    'Verde Guatemala',
-    'Statuario',
-    'Arabescato',
-    'Breccia',
-  ];
+  // Extract unique marble types and locations from inventory data
+  const marbleTypes = useMemo(() => {
+    const types = new Set<string>();
+    inventory.forEach((marble: any) => {
+      if (marble.marbleType) {
+        types.add(marble.marbleType);
+      }
+    });
+    return Array.from(types).sort();
+  }, [inventory]);
 
-  const locations = ['A-01', 'A-02', 'B-01', 'B-02', 'C-01', 'C-02', 'D-01', 'D-02', 'E-01', 'E-02'];
+  const locations = useMemo(() => {
+    const locs = new Set<string>();
+    inventory.forEach((marble: any) => {
+      if (marble.location) {
+        locs.add(marble.location);
+      }
+    });
+    // Add default locations if none exist
+    const defaultLocations = ['A-01', 'A-02', 'B-01', 'B-02', 'C-01', 'C-02', 'D-01', 'D-02', 'E-01', 'E-02'];
+    defaultLocations.forEach(loc => locs.add(loc));
+    return Array.from(locs).sort();
+  }, [inventory]);
 
-  const availableStock = [
-    { type: 'Carrara', available: 2450, unit: 'kg' },
-    { type: 'Calacatta', available: 850, unit: 'kg' },
-    { type: 'Emperador', available: 320, unit: 'kg' },
-    { type: 'Nero Marquina', available: 1680, unit: 'kg' },
-    { type: 'Crema Marfil', available: 150, unit: 'kg' },
-    { type: 'Rosso Verona', available: 920, unit: 'kg' },
-    { type: 'Statuario', available: 1200, unit: 'kg' },
-  ];
+  // Fetch inventory data from API
+  useEffect(() => {
+    const fetchInventory = async () => {
+      try {
+        const response = await inventoryAPI.getAll();
+        setInventory(response.marbles || []);
+      } catch (err) {
+        console.error('Error fetching inventory:', err);
+        // Fallback to empty array if API fails
+        setInventory([]);
+      }
+    };
+    fetchInventory();
+  }, []);
+
+  // Calculate available stock by marble type from real inventory data
+  const availableStock = useMemo(() => {
+    const stockMap = new Map<string, { available: number; unit: string }>();
+    
+    inventory.forEach((marble: any) => {
+      const key = marble.marbleType;
+      if (stockMap.has(key)) {
+        const existing = stockMap.get(key)!;
+        stockMap.set(key, {
+          available: existing.available + marble.quantity,
+          unit: existing.unit, // Use first unit found for each type
+        });
+      } else {
+        stockMap.set(key, {
+          available: marble.quantity,
+          unit: marble.unit || 'kg',
+        });
+      }
+    });
+
+    return Array.from(stockMap.entries()).map(([type, data]) => ({
+      type,
+      ...data,
+    }));
+  }, [inventory]);
 
   const reasons = [
     'Production Use',

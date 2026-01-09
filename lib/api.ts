@@ -146,3 +146,24 @@ export const authAPI = {
     }),
 };
 
+// Barcodes API
+export const barcodeAPI = {
+  getAll: (search?: string) => {
+    const query = search ? `?search=${encodeURIComponent(search)}` : '';
+    return apiRequest<{ success: boolean; barcodes: any[] }>(`/barcodes${query}`);
+  },
+};
+
+// Reports API
+export const reportsAPI = {
+  getMonthly: (month?: string) => {
+    const query = month ? `?month=${encodeURIComponent(month)}` : '';
+    return apiRequest<{
+      success: boolean;
+      monthlyData: any[];
+      usageByType: any[];
+      trendData: any[];
+    }>(`/reports/monthly${query}`);
+  },
+};
+

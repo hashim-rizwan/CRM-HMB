@@ -1,75 +1,49 @@
 'use client'
 
+import { useState, useEffect } from 'react';
 import { AlertTriangle, CheckCircle, Info, Package, Clock } from 'lucide-react';
+import { notificationAPI } from '@/lib/api';
 
 interface Notification {
-  id: string;
+  id: number;
   type: 'low-stock' | 'stock-added' | 'stock-removed' | 'info';
   message: string;
-  timestamp: string;
+  createdAt: string;
   read: boolean;
 }
 
-const mockNotifications: Notification[] = [
-  {
-    id: '1',
-    type: 'low-stock',
-    message: 'Low stock alert: Crema Marfil Beige is below threshold (150 kg remaining)',
-    timestamp: '2026-01-09 09:15 AM',
-    read: false,
-  },
-  {
-    id: '2',
-    type: 'low-stock',
-    message: 'Low stock alert: Emperador Brown is below threshold (320 kg remaining)',
-    timestamp: '2026-01-09 08:45 AM',
-    read: false,
-  },
-  {
-    id: '3',
-    type: 'stock-added',
-    message: 'Stock added: 500 kg of Carrara White added to location A-01',
-    timestamp: '2026-01-08 04:30 PM',
-    read: true,
-  },
-  {
-    id: '4',
-    type: 'stock-removed',
-    message: 'Stock removed: 250 kg of Nero Marquina Black removed from location B-02',
-    timestamp: '2026-01-08 02:15 PM',
-    read: true,
-  },
-  {
-    id: '5',
-    type: 'info',
-    message: 'Monthly usage report for December 2025 is now available',
-    timestamp: '2026-01-08 10:00 AM',
-    read: true,
-  },
-  {
-    id: '6',
-    type: 'stock-added',
-    message: 'Stock added: 300 kg of Statuario White/Grey added to location D-02',
-    timestamp: '2026-01-07 03:45 PM',
-    read: true,
-  },
-  {
-    id: '7',
-    type: 'low-stock',
-    message: 'Critical: Verde Guatemala Green is out of stock (0 kg remaining)',
-    timestamp: '2026-01-06 11:20 AM',
-    read: true,
-  },
-  {
-    id: '8',
-    type: 'stock-removed',
-    message: 'Stock removed: 150 kg of Calacatta Gold removed from location A-02',
-    timestamp: '2026-01-05 01:30 PM',
-    read: true,
-  },
-];
-
 export function Notifications() {
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+  const fetchNotifications = async () => {
+    try {
+      setLoading(true);
+      const response = await notificationAPI.getAll();
+      setNotifications(response.notifications || []);
+    } catch (err) {
+      console.error('Error fetching notifications:', err);
+      setNotifications([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatTimestamp = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+  };
   const getNotificationIcon = (type: Notification['type']) => {
     switch (type) {
       case 'low-stock':
@@ -100,7 +74,7 @@ export function Notifications() {
     }
   };
 
-  const unreadCount = mockNotifications.filter((n) => !n.read).length;
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
     <div className="p-8">
@@ -124,8 +98,13 @@ export function Notifications() {
 
         {/* Notifications List */}
         <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800">
-          <div className="divide-y divide-gray-200 dark:divide-gray-800">
-            {mockNotifications.map((notification) => (
+          {loading ? (
+            <div className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+              Loading notifications...
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-200 dark:divide-gray-800">
+              {notifications.map((notification) => (
               <div
                 key={notification.id}
                 className={`p-6 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800 ${
@@ -160,17 +139,18 @@ export function Notifications() {
                     </div>
                     <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                       <Clock className="w-3 h-3" />
-                      <span>{notification.timestamp}</span>
+                      <span>{formatTimestamp(notification.createdAt)}</span>
                     </div>
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Empty State (hidden when notifications exist) */}
-        {mockNotifications.length === 0 && (
+        {!loading && notifications.length === 0 && (
           <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-12 text-center">
             <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
               <Info className="w-8 h-8 text-gray-400 dark:text-gray-500" />

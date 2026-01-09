@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Barcode, Eye, Printer, Download } from 'lucide-react';
+import { barcodeAPI } from '@/lib/api';
 
 interface BarcodeItem {
   id: string;
@@ -11,26 +12,35 @@ interface BarcodeItem {
   lastPrinted: string;
 }
 
-const mockBarcodes: BarcodeItem[] = [
-  { id: '001', marbleName: 'Carrara White', marbleType: 'Carrara', barcodeValue: '3001234567890', lastPrinted: '2026-01-08' },
-  { id: '002', marbleName: 'Calacatta Gold', marbleType: 'Calacatta', barcodeValue: '3001234567891', lastPrinted: '2026-01-07' },
-  { id: '003', marbleName: 'Emperador Brown', marbleType: 'Emperador', barcodeValue: '3001234567892', lastPrinted: '2026-01-08' },
-  { id: '004', marbleName: 'Nero Marquina Black', marbleType: 'Nero Marquina', barcodeValue: '3001234567893', lastPrinted: '2026-01-06' },
-  { id: '005', marbleName: 'Crema Marfil Beige', marbleType: 'Crema Marfil', barcodeValue: '3001234567894', lastPrinted: '2026-01-08' },
-  { id: '006', marbleName: 'Rosso Verona Red', marbleType: 'Rosso Verona', barcodeValue: '3001234567895', lastPrinted: '2026-01-05' },
-  { id: '007', marbleName: 'Verde Guatemala Green', marbleType: 'Verde Guatemala', barcodeValue: '3001234567896', lastPrinted: '2026-01-03' },
-  { id: '008', marbleName: 'Statuario White/Grey', marbleType: 'Statuario', barcodeValue: '3001234567897', lastPrinted: '2026-01-08' },
-];
-
 export function BarcodeManagement() {
-  const [selectedBarcode, setSelectedBarcode] = useState<BarcodeItem | null>(mockBarcodes[0]);
+  const [barcodes, setBarcodes] = useState<BarcodeItem[]>([]);
+  const [selectedBarcode, setSelectedBarcode] = useState<BarcodeItem | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
 
-  const filteredBarcodes = mockBarcodes.filter(
-    (item) =>
-      item.marbleName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.barcodeValue.includes(searchQuery)
-  );
+  useEffect(() => {
+    fetchBarcodes();
+  }, [searchQuery]);
+
+  const fetchBarcodes = async () => {
+    try {
+      setLoading(true);
+      const response = await barcodeAPI.getAll(searchQuery);
+      const fetchedBarcodes = response.barcodes || [];
+      setBarcodes(fetchedBarcodes);
+      // Auto-select first barcode if none selected and barcodes exist
+      if (fetchedBarcodes.length > 0 && !selectedBarcode) {
+        setSelectedBarcode(fetchedBarcodes[0]);
+      }
+    } catch (err) {
+      console.error('Error fetching barcodes:', err);
+      setBarcodes([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredBarcodes = barcodes;
 
   const handlePrintBarcode = (item: BarcodeItem) => {
     alert(`Printing barcode for ${item.marbleName}`);
@@ -92,7 +102,20 @@ export function BarcodeManagement() {
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
-                    {filteredBarcodes.map((item) => (
+                    {loading ? (
+                      <tr>
+                        <td colSpan={4} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                          Loading barcodes...
+                        </td>
+                      </tr>
+                    ) : filteredBarcodes.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                          No barcodes found
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredBarcodes.map((item) => (
                       <tr
                         key={item.id}
                         className={`hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer ${
@@ -138,7 +161,8 @@ export function BarcodeManagement() {
                           </div>
                         </td>
                       </tr>
-                    ))}
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
