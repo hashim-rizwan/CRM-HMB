@@ -239,7 +239,9 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
 
         {/* Add Stock Form */}
         {activeTab === 'add' && (
-          <form onSubmit={handleAddSubmit} className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <form onSubmit={handleAddSubmit} className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-8">
             {/* Barcode Scanner Button */}
             <div className="mb-6 flex justify-end">
               <button
@@ -460,6 +462,79 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
               </button>
             </div>
           </form>
+            </div>
+
+            {/* Summary Panel */}
+            <div className="lg:col-span-1">
+              <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-6 sticky top-8">
+                <h4 className="font-semibold text-[#1F2937] dark:text-white mb-4">Quick Summary</h4>
+                
+                <div className="space-y-4">
+                  <div className="pb-4 border-b border-gray-200 dark:border-gray-800">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Selected Item</p>
+                    <p className="font-medium text-[#1F2937] dark:text-white">
+                      {addFormData.marbleType && addFormData.color
+                        ? `${addFormData.marbleType} - ${addFormData.color}`
+                        : addFormData.marbleType || 'None selected'}
+                    </p>
+                  </div>
+
+                  <div className="pb-4 border-b border-gray-200 dark:border-gray-800">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Current Stock</p>
+                    <p className="font-medium text-[#1F2937] dark:text-white">
+                      {(() => {
+                        const currentStock = availableStock.find(s => s.type === addFormData.marbleType);
+                        return currentStock 
+                          ? `${currentStock.available.toLocaleString()} ${currentStock.unit}`
+                          : '-';
+                      })()}
+                    </p>
+                  </div>
+
+                  <div className="pb-4 border-b border-gray-200 dark:border-gray-800">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Adding</p>
+                    <p className="font-medium text-[#16A34A] dark:text-green-400">
+                      {addFormData.quantity 
+                        ? `${parseFloat(addFormData.quantity).toLocaleString()} ${addFormData.unit || 'kg'}`
+                        : '-'
+                      }
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">New Total</p>
+                    <p className="font-semibold text-[#1F2937] dark:text-white">
+                      {(() => {
+                        const currentStock = availableStock.find(s => s.type === addFormData.marbleType);
+                        if (currentStock && addFormData.quantity) {
+                          const newTotal = currentStock.available + parseFloat(addFormData.quantity);
+                          return `${newTotal.toLocaleString()} ${currentStock.unit}`;
+                        }
+                        return '-';
+                      })()}
+                    </p>
+                  </div>
+                </div>
+
+                {addFormData.marbleType && addFormData.quantity && (() => {
+                  const currentStock = availableStock.find(s => s.type === addFormData.marbleType);
+                  if (currentStock) {
+                    const newTotal = currentStock.available + parseFloat(addFormData.quantity);
+                    if (newTotal > 10000) {
+                      return (
+                        <div className="mt-4 p-3 bg-[#D1FAE5] dark:bg-green-900 border border-[#16A34A] dark:border-green-700 rounded-lg">
+                          <p className="text-xs text-[#065F46] dark:text-green-300">
+                            ✓ Stock level will exceed 10,000 {currentStock.unit}
+                          </p>
+                        </div>
+                      );
+                    }
+                  }
+                  return null;
+                })()}
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Remove Stock Form */}
