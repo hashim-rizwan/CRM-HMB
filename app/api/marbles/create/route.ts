@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
         marbleType,
         color: finalColor,
         quantity: 0, // No stock initially
-        unit: 'kg', // Default unit
+        unit: 'square feet', // Default unit
         location: 'N/A', // Not in stock yet
         supplier: supplier || null,
         batchNumber: batchNumber || null,

@@ -14,12 +14,13 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
   const [scannedBarcode, setScannedBarcode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [inventory, setInventory] = useState<any[]>([]);
   
   const [addFormData, setAddFormData] = useState({
     marbleType: '',
     quantity: '',
-    unit: 'kg',
+    unit: 'square feet',
     location: '',
     supplier: '',
     batchNumber: '',
@@ -50,6 +51,7 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccessMessage(null);
 
     try {
       await stockAPI.add({
@@ -69,7 +71,7 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
       setAddFormData({
         marbleType: '',
         quantity: '',
-        unit: 'kg',
+        unit: 'square feet',
         location: '',
         supplier: '',
         batchNumber: '',
@@ -83,10 +85,10 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
       const response = await inventoryAPI.getAll();
       setInventory(response.marbles || []);
       
-      alert('Stock added successfully!');
+      setSuccessMessage('Stock added successfully!');
+      setTimeout(() => setSuccessMessage(null), 5000);
     } catch (err: any) {
       setError(err.message || 'Failed to add stock');
-      alert(err.message || 'Failed to add stock');
     } finally {
       setLoading(false);
     }
@@ -96,6 +98,7 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccessMessage(null);
 
     try {
       await stockAPI.remove({
@@ -118,10 +121,10 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
       const response = await inventoryAPI.getAll();
       setInventory(response.marbles || []);
       
-      alert('Stock removed successfully!');
+      setSuccessMessage('Stock removed successfully!');
+      setTimeout(() => setSuccessMessage(null), 5000);
     } catch (err: any) {
       setError(err.message || 'Failed to remove stock');
-      alert(err.message || 'Failed to remove stock');
     } finally {
       setLoading(false);
     }
@@ -152,6 +155,7 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccessMessage(null);
 
     try {
       const response = await marblesAPI.create({
@@ -166,9 +170,9 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
       // Store the generated barcode from response
       if (response.marble?.barcode) {
         setGeneratedBarcode(response.marble.barcode);
-        alert(`New marble type created successfully!\nBarcode: ${response.marble.barcode}\n\nYou can now use "Add Stock" to add inventory for this marble type.`);
+        setSuccessMessage(`New marble type created successfully! Barcode: ${response.marble.barcode}. You can now use "Add Stock" to add inventory for this marble type.`);
       } else {
-        alert('New marble type created successfully!');
+        setSuccessMessage('New marble type created successfully!');
       }
 
       setNewItemFormData({
@@ -183,9 +187,10 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
       // Refresh inventory data after adding new item
       const inventoryResponse = await inventoryAPI.getAll();
       setInventory(inventoryResponse.marbles || []);
+      
+      setTimeout(() => setSuccessMessage(null), 8000);
     } catch (err: any) {
       setError(err.message || 'Failed to create marble type');
-      alert(err.message || 'Failed to create marble type');
     } finally {
       setLoading(false);
     }
@@ -245,7 +250,7 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
       } else {
         stockMap.set(key, {
           available: marble.quantity,
-          unit: marble.unit || 'kg',
+          unit: marble.unit || 'square feet',
         });
       }
     });
@@ -309,27 +314,57 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
             costPrice: marble.costPrice?.toString() || '',
             salePrice: marble.salePrice?.toString() || '',
           });
-          alert(`Barcode scanned: ${barcode}\nMarble: ${marble.marbleType} - ${marble.color}`);
+          setSuccessMessage(`Barcode scanned: ${barcode}. Marble: ${marble.marbleType} - ${marble.color}`);
+          setTimeout(() => setSuccessMessage(null), 5000);
         } else if (activeTab === 'remove') {
           // Auto-populate Remove Stock form
           setRemoveFormData({
             ...removeFormData,
             marbleType: marble.marbleType,
           });
-          alert(`Barcode scanned: ${barcode}\nMarble: ${marble.marbleType} - ${marble.color}`);
+          setSuccessMessage(`Barcode scanned: ${barcode}. Marble: ${marble.marbleType} - ${marble.color}`);
+          setTimeout(() => setSuccessMessage(null), 5000);
         }
       } else {
-        alert(`Barcode ${barcode} not found in database`);
+        setError(`Barcode ${barcode} not found in database`);
       }
     } catch (error: any) {
       console.error('Error fetching marble by barcode:', error);
-      alert(`Error: ${error.message || 'Failed to fetch marble data'}`);
+      setError(`Error: ${error.message || 'Failed to fetch marble data'}`);
     }
   };
 
   return (
     <div className="p-8">
       <div className="max-w-5xl mx-auto">
+        {/* Notifications */}
+        {successMessage && (
+          <div className="mb-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-start justify-between">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-green-800 dark:text-green-300">{successMessage}</p>
+            </div>
+            <button
+              onClick={() => setSuccessMessage(null)}
+              className="ml-4 text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+        {error && (
+          <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-start justify-between">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-red-800 dark:text-red-300">{error}</p>
+            </div>
+            <button
+              onClick={() => setError(null)}
+              className="ml-4 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {/* Header with Tabs */}
         <div className="mb-8">
           <h3 className="text-xl font-semibold text-[#1F2937] dark:text-white mb-4">Manage Stock</h3>
@@ -623,9 +658,10 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
                   required
                   className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
                 >
+                  <option value="square feet">Square Feet (sq ft)</option>
+                  <option value="sqm">Square Meters (m²)</option>
                   <option value="kg">Kilograms (kg)</option>
                   <option value="ton">Tons</option>
-                  <option value="sqm">Square Meters (m²)</option>
                   <option value="pcs">Pieces</option>
                 </select>
               </div>
@@ -742,7 +778,7 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
                  onClick={() => setAddFormData({
                    marbleType: '',
                    quantity: '',
-                  unit: 'kg',
+                  unit: 'square feet',
                   location: '',
                   supplier: '',
                   batchNumber: '',
@@ -795,7 +831,7 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Adding</p>
                     <p className="font-medium text-[#16A34A] dark:text-green-400">
                       {addFormData.quantity 
-                        ? `${parseFloat(addFormData.quantity).toLocaleString()} ${addFormData.unit || 'kg'}`
+                        ? `${parseFloat(addFormData.quantity).toLocaleString()} ${addFormData.unit || 'square feet'}`
                         : '-'
                       }
                     </p>
@@ -883,7 +919,7 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
                         className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
                       />
                       <span className="absolute right-4 top-1/2 transform -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400">
-                        {selectedStock?.unit || 'kg'}
+                        {selectedStock?.unit || 'square feet'}
                       </span>
                     </div>
                     {selectedStock && (
@@ -997,7 +1033,7 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Removing</p>
                     <p className="font-medium text-[#DC2626] dark:text-red-400">
                       {removeFormData.quantity 
-                        ? `${parseFloat(removeFormData.quantity).toLocaleString()} ${selectedStock?.unit || 'kg'}`
+                        ? `${parseFloat(removeFormData.quantity).toLocaleString()} ${selectedStock?.unit || 'square feet'}`
                         : '-'
                       }
                     </p>

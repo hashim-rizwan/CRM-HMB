@@ -15,6 +15,7 @@ import { Login } from './components/Login'
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [username, setUsername] = useState('')
+  const [userRole, setUserRole] = useState<'Admin' | 'Staff'>('Staff')
   const [activeScreen, setActiveScreen] = useState('dashboard')
   const [searchQuery, setSearchQuery] = useState('')
   const [darkMode, setDarkMode] = useState(false)
@@ -29,6 +30,22 @@ export default function App() {
       // Verify the user still exists and is active (optional: can add API check)
       setUsername(savedUsername)
       setIsAuthenticated(true)
+      
+      // Load user role from saved data
+      if (savedUserData) {
+        try {
+          const userData = JSON.parse(savedUserData)
+          if (userData.role === 'Admin' || userData.role === 'Staff') {
+            setUserRole(userData.role)
+            // If admin, default to user management screen
+            if (userData.role === 'Admin') {
+              setActiveScreen('users')
+            }
+          }
+        } catch (e) {
+          console.error('Error parsing user data:', e)
+        }
+      }
     }
 
     // Load dark mode preference
@@ -44,13 +61,23 @@ export default function App() {
     localStorage.setItem('username', user)
     if (userData) {
       localStorage.setItem('userData', JSON.stringify(userData))
+      // Set user role
+      if (userData.role === 'Admin' || userData.role === 'Staff') {
+        setUserRole(userData.role)
+        // If admin, default to user management screen
+        if (userData.role === 'Admin') {
+          setActiveScreen('users')
+        }
+      }
     }
   }
 
   const handleLogout = () => {
     setIsAuthenticated(false)
     setUsername('')
+    setUserRole('Staff')
     localStorage.removeItem('username')
+    localStorage.removeItem('userData')
   }
 
   const toggleDarkMode = () => {
@@ -86,6 +113,19 @@ export default function App() {
   }
 
   const renderContent = () => {
+    // Role-based access control
+    // Admin can only access User Management and Settings
+    if (userRole === 'Admin' && activeScreen !== 'users' && activeScreen !== 'settings') {
+      setActiveScreen('users')
+      return <UserManagement />
+    }
+    
+    // Staff cannot access User Management
+    if (userRole === 'Staff' && activeScreen === 'users') {
+      setActiveScreen('dashboard')
+      return <InventoryDashboard searchQuery={searchQuery} />
+    }
+
     switch (activeScreen) {
       case 'dashboard':
         return <InventoryDashboard searchQuery={searchQuery} />
@@ -114,7 +154,7 @@ export default function App() {
   return (
     <div className="flex h-screen bg-[#F9FAFB] dark:bg-black overflow-hidden">
       {/* Sidebar - Fixed Width */}
-      <Sidebar activeScreen={activeScreen} setActiveScreen={setActiveScreen} darkMode={darkMode} />
+      <Sidebar activeScreen={activeScreen} setActiveScreen={setActiveScreen} darkMode={darkMode} userRole={userRole} />
 
       {/* Main Content Area - Flexible */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">

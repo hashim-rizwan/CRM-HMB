@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
               marbleType: marbleData.marbleType,
               color: marbleData.color,
               quantity: marbleData.quantity || 0,
-              unit: marbleData.unit || 'kg',
+              unit: marbleData.unit || 'square feet',
               location: marbleData.location,
               supplier: marbleData.supplier || null,
               batchNumber: marbleData.batchNumber || null,
