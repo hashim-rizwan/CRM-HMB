@@ -11,6 +11,8 @@ import { BarcodeManagement } from './components/BarcodeManagement'
 import { UserManagement } from './components/UserManagement'
 import { Settings } from './components/Settings'
 import { Login } from './components/Login'
+import { UserProfile } from './components/UserProfile'
+import { TransactionHistory } from './components/TransactionHistory'
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -95,8 +97,12 @@ export default function App() {
         return 'Notifications'
       case 'report':
         return 'Monthly Usage Report'
+      case 'transaction-history':
+        return 'Transaction History'
       case 'users':
         return 'User Management'
+      case 'user-profile':
+        return 'User Profile'
       case 'settings':
         return 'Settings'
       default:
@@ -128,8 +134,12 @@ export default function App() {
         return <Notifications />
       case 'report':
         return <MonthlyReport searchQuery={searchQuery} />
+      case 'transaction-history':
+        return <TransactionHistory />
       case 'users':
         return <UserManagement />
+      case 'user-profile':
+        return <UserProfile username={username} onLogout={handleLogout} />
       case 'settings':
         return <Settings username={username} onLogout={handleLogout} />
       default:
