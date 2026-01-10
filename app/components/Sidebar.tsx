@@ -6,18 +6,22 @@ interface SidebarProps {
   activeScreen: string;
   setActiveScreen: (screen: string) => void;
   darkMode?: boolean;
+  userRole?: 'Admin' | 'Staff';
 }
 
-export function Sidebar({ activeScreen, setActiveScreen, darkMode = false }: SidebarProps) {
-  const menuItems = [
+export function Sidebar({ activeScreen, setActiveScreen, darkMode = false, userRole = 'Staff' }: SidebarProps) {
+  const allMenuItems = [
     { id: 'dashboard', label: 'Inventory Dashboard', icon: Package },
     { id: 'manage-stock', label: 'Manage Stock', icon: ArrowLeftRight },
     { id: 'barcodes', label: 'Barcode Management', icon: Scan },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'report', label: 'Monthly Usage Report', icon: BarChart3 },
-    { id: 'users', label: 'User Management', icon: Users },
+    { id: 'users', label: 'User Management', icon: Users, adminOnly: true },
     { id: 'settings', label: 'Settings', icon: SettingsIcon },
   ];
+
+  // Filter menu items - Staff cannot see User Management
+  const menuItems = allMenuItems.filter(item => !item.adminOnly || userRole === 'Admin');
 
   return (
     <div className="w-60 bg-[#661B0F] text-white flex flex-col h-screen">

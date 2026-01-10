@@ -20,6 +20,7 @@ interface InventoryItem {
 
 interface InventoryDashboardProps {
   searchQuery?: string;
+  userRole?: 'Admin' | 'Staff';
 }
 
 // Elastic search function - searches across multiple fields
@@ -52,7 +53,7 @@ const elasticSearch = (items: InventoryItem[], query: string): InventoryItem[] =
   });
 };
 
-export function InventoryDashboard({ searchQuery = '' }: InventoryDashboardProps) {
+export function InventoryDashboard({ searchQuery = '', userRole = 'Staff' }: InventoryDashboardProps) {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [stats, setStats] = useState({
     totalItems: 0,
@@ -147,7 +148,8 @@ export function InventoryDashboard({ searchQuery = '' }: InventoryDashboardProps
   const summaryCards = [
     { title: 'Total Items', value: totalItems, icon: Package, color: 'bg-[#2563EB]', change: '+2 this week' },
     { title: 'Total Stock', value: `${totalQuantity.toLocaleString()} kg`, icon: TrendingUp, color: 'bg-[#16A34A]', change: '+5% from last month' },
-    { title: 'Inventory Value', value: `PKR ${totalInventoryValue.toLocaleString()}`, icon: Package, color: 'bg-[#7C3AED]', change: 'At cost price' },
+    // Only show Inventory Value for Admin (based on cost price)
+    ...(userRole === 'Admin' ? [{ title: 'Inventory Value', value: `PKR ${totalInventoryValue.toLocaleString()}`, icon: Package, color: 'bg-[#7C3AED]', change: 'At cost price' }] : []),
     { title: 'Low Stock', value: lowStockCount, icon: AlertTriangle, color: 'bg-[#F59E0B]', change: 'Needs attention' },
   ];
 
@@ -235,12 +237,14 @@ export function InventoryDashboard({ searchQuery = '' }: InventoryDashboardProps
                 >
                   Quantity {getSortIcon('quantity')}
                 </th>
+                {userRole === 'Admin' && (
                 <th 
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                   onClick={() => handleSort('costPrice')}
                 >
                   Cost Price {getSortIcon('costPrice')}
                 </th>
+                )}
                 <th 
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                   onClick={() => handleSort('salePrice')}
@@ -270,7 +274,7 @@ export function InventoryDashboard({ searchQuery = '' }: InventoryDashboardProps
             <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
               {filteredInventory.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                  <td colSpan={userRole === 'Admin' ? 9 : 8} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
                     No inventory items found matching "{searchQuery}"
                   </td>
                 </tr>
@@ -281,7 +285,9 @@ export function InventoryDashboard({ searchQuery = '' }: InventoryDashboardProps
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{item.marbleType}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">{item.color}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{item.quantity.toLocaleString()} {item.unit}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{`PKR ${item.costPrice}/${item.unit}`}</td>
+                  {userRole === 'Admin' && (
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{`PKR ${item.costPrice}/${item.unit}`}</td>
+                  )}
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#16A34A] dark:text-green-400">{`PKR ${item.salePrice}/${item.unit}`}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">{item.location}</td>
                   <td className="px-6 py-4 whitespace-nowrap">

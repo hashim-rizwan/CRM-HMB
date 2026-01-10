@@ -37,10 +37,6 @@ export default function App() {
           const userData = JSON.parse(savedUserData)
           if (userData.role === 'Admin' || userData.role === 'Staff') {
             setUserRole(userData.role)
-            // If admin, default to user management screen
-            if (userData.role === 'Admin') {
-              setActiveScreen('users')
-            }
           }
         } catch (e) {
           console.error('Error parsing user data:', e)
@@ -64,10 +60,6 @@ export default function App() {
       // Set user role
       if (userData.role === 'Admin' || userData.role === 'Staff') {
         setUserRole(userData.role)
-        // If admin, default to user management screen
-        if (userData.role === 'Admin') {
-          setActiveScreen('users')
-        }
       }
     }
   }
@@ -112,25 +104,24 @@ export default function App() {
     }
   }
 
-  const renderContent = () => {
-    // Role-based access control
-    // Admin can only access User Management and Settings
-    if (userRole === 'Admin' && activeScreen !== 'users' && activeScreen !== 'settings') {
-      setActiveScreen('users')
-      return <UserManagement />
-    }
-    
-    // Staff cannot access User Management
+  // Prevent Staff from accessing User Management
+  useEffect(() => {
     if (userRole === 'Staff' && activeScreen === 'users') {
       setActiveScreen('dashboard')
-      return <InventoryDashboard searchQuery={searchQuery} />
+    }
+  }, [userRole, activeScreen])
+
+  const renderContent = () => {
+    // Staff cannot access User Management
+    if (userRole === 'Staff' && activeScreen === 'users') {
+      return <InventoryDashboard searchQuery={searchQuery} userRole={userRole} />
     }
 
     switch (activeScreen) {
       case 'dashboard':
-        return <InventoryDashboard searchQuery={searchQuery} />
+        return <InventoryDashboard searchQuery={searchQuery} userRole={userRole} />
       case 'manage-stock':
-        return <ManageStock searchQuery={searchQuery} />
+        return <ManageStock searchQuery={searchQuery} userRole={userRole} />
       case 'barcodes':
         return <BarcodeManagement />
       case 'notifications':
@@ -142,7 +133,7 @@ export default function App() {
       case 'settings':
         return <Settings username={username} onLogout={handleLogout} />
       default:
-        return <InventoryDashboard searchQuery={searchQuery} />
+        return <InventoryDashboard searchQuery={searchQuery} userRole={userRole} />
     }
   }
 

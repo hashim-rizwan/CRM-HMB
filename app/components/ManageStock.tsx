@@ -6,9 +6,10 @@ import { stockAPI, inventoryAPI, marblesAPI } from '@/lib/api';
 
 interface ManageStockProps {
   searchQuery?: string;
+  userRole?: 'Admin' | 'Staff';
 }
 
-export function ManageStock({ searchQuery = '' }: ManageStockProps) {
+export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStockProps) {
   const [activeTab, setActiveTab] = useState<'add' | 'new-item' | 'remove'>('add');
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [scannedBarcode, setScannedBarcode] = useState('');
@@ -479,7 +480,8 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
                 />
               </div>
 
-              {/* Cost Price */}
+              {/* Cost Price - Admin only */}
+              {userRole === 'Admin' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Cost Price
@@ -498,6 +500,7 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
                   />
                 </div>
               </div>
+              )}
 
               {/* Sale Price */}
               <div>
@@ -715,7 +718,8 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
                 />
               </div>
 
-              {/* Cost Price */}
+              {/* Cost Price - Admin only */}
+              {userRole === 'Admin' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Cost Price
@@ -734,6 +738,7 @@ export function ManageStock({ searchQuery = '' }: ManageStockProps) {
                   />
                 </div>
               </div>
+              )}
 
               {/* Sale Price */}
               <div>
