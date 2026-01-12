@@ -9,7 +9,13 @@ Cross-platform desktop inventory management system for a marble factory.
 npm install
 ```
 
-2. Initialize database:
+2. Set up database:
+
+**Option A: Cloud Database (Recommended - Syncs across all devices)**
+- See [QUICK_START_CLOUD_DB.md](./QUICK_START_CLOUD_DB.md) for 5-minute setup
+- Or see [CLOUD_DATABASE_SETUP.md](./CLOUD_DATABASE_SETUP.md) for detailed guide
+
+**Option B: Local Database**
 ```bash
 npx prisma migrate dev --name init
 ```

@@ -21,6 +21,10 @@ export function UserManagement() {
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [notification, setNotification] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
   const [formData, setFormData] = useState({
     username: '',
     name: '',
@@ -53,7 +57,10 @@ export function UserManagement() {
       setUsers(transformed);
     } catch (err: any) {
       console.error('Error fetching users:', err);
-      alert('Failed to fetch users');
+      setNotification({
+        type: 'error',
+        message: 'Failed to fetch users',
+      });
     } finally {
       setLoading(false);
     }
@@ -88,9 +95,15 @@ export function UserManagement() {
         const newStatus = user.status === 'Active' ? 'Disabled' : 'Active';
         await userAPI.updateStatus(user.id, newStatus);
         await fetchUsers();
-        alert(`User ${action}d successfully!`);
+        setNotification({
+          type: 'success',
+          message: `User ${action}d successfully!`,
+        });
       } catch (err: any) {
-        alert(err.message || `Failed to ${action} user`);
+        setNotification({
+          type: 'error',
+          message: err.message || `Failed to ${action} user`,
+        });
       }
     }
   };
@@ -106,15 +119,24 @@ export function UserManagement() {
     try {
       if (modalMode === 'add') {
         if (!formData.username) {
-          alert('Username is required for new users');
+          setNotification({
+            type: 'error',
+            message: 'Username is required for new users',
+          });
           return;
         }
         if (!formData.password) {
-          alert('Password is required for new users');
+          setNotification({
+            type: 'error',
+            message: 'Password is required for new users',
+          });
           return;
         }
         if (formData.password !== formData.confirmPassword) {
-          alert('Passwords do not match. Please try again.');
+          setNotification({
+            type: 'error',
+            message: 'Passwords do not match. Please try again.',
+          });
           return;
         }
         await userAPI.create({
@@ -126,7 +148,10 @@ export function UserManagement() {
           role: formData.role,
           department: formData.department || undefined,
         });
-        alert('User added successfully!');
+        setNotification({
+          type: 'success',
+          message: 'User added successfully!',
+        });
       } else if (selectedUser) {
         await userAPI.update(selectedUser.id, {
           fullName: formData.name,
@@ -135,13 +160,19 @@ export function UserManagement() {
           role: formData.role,
           department: formData.department || undefined,
         });
-        alert('User updated successfully!');
+        setNotification({
+          type: 'success',
+          message: 'User updated successfully!',
+        });
       }
       setShowModal(false);
       setFormData({ username: '', name: '', email: '', role: 'Staff', password: '', confirmPassword: '', phone: '', department: '' });
       await fetchUsers();
     } catch (err: any) {
-      alert(err.message || 'Failed to save user');
+      setNotification({
+        type: 'error',
+        message: err.message || 'Failed to save user',
+      });
     }
   };
 
@@ -158,7 +189,31 @@ export function UserManagement() {
   };
 
   return (
-    <div className="p-8">
+    <div className="p-8 relative">
+      {notification && (
+        <div className="fixed top-4 right-4 z-50">
+          <div
+            className={`flex items-start gap-3 px-4 py-3 rounded-lg shadow-lg border text-sm max-w-sm ${
+              notification.type === 'success'
+                ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/40 dark:border-green-700 dark:text-green-100'
+                : 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/40 dark:border-red-700 dark:text-red-100'
+            }`}
+          >
+            <div className="flex-1">
+              <p className="font-medium">
+                {notification.type === 'success' ? 'Success' : 'Error'}
+              </p>
+              <p className="mt-1">{notification.message}</p>
+            </div>
+            <button
+              onClick={() => setNotification(null)}
+              className="ml-2 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-white"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
