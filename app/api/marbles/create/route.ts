@@ -43,16 +43,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if marble type already exists
-    // Only prevent creation if there's already a template entry (batchNumber is null)
-    // OR if there are actual batches (with batch numbers)
-    const existingTemplate = await prisma.marble.findFirst({
+    // Check for template entries (batchNumber is null) or batches (with batch numbers)
+    const existingTemplates = await prisma.marble.findMany({
       where: {
         marbleType,
-        batchNumber: null, // Template entry
+        batchNumber: null, // Template entries
       },
     });
 
-    const existingBatches = await prisma.marble.findFirst({
+    const existingBatches = await prisma.marble.findMany({
       where: {
         marbleType,
         batchNumber: {
@@ -61,7 +60,29 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    if (existingTemplate || existingBatches) {
+    // If duplicates exist, clean them up first
+    if (existingTemplates.length > 1) {
+      // Keep only the oldest template, delete duplicates
+      const oldestTemplate = existingTemplates.sort((a, b) => 
+        a.createdAt.getTime() - b.createdAt.getTime()
+      )[0];
+      const duplicateIds = existingTemplates
+        .filter(t => t.id !== oldestTemplate.id)
+        .map(t => t.id);
+      
+      if (duplicateIds.length > 0) {
+        await prisma.marble.deleteMany({
+          where: {
+            id: {
+              in: duplicateIds,
+            },
+          },
+        });
+      }
+    }
+
+    // Prevent creation if any entry exists (template or batch)
+    if (existingTemplates.length > 0 || existingBatches.length > 0) {
       return NextResponse.json(
         { error: 'Marble type already exists. Use "Add Stock" to add inventory for this type.' },
         { status: 400 }
