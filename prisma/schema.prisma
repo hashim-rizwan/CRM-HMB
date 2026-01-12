@@ -17,7 +17,7 @@ model Marble {
   color             String
   quantity          Float              @default(0)
   unit              String             @default("square feet")
-  location          String
+  location          String?            @default("N/A")
   supplier          String?
   batchNumber       String?
   barcode           String?            @unique

@@ -66,13 +66,12 @@ export const stockAPI = {
 export const marblesAPI = {
   create: (data: {
     marbleType: string;
-    supplier?: string;
-    batchNumber?: string;
-    costPrice?: number;
-    salePrice?: number;
     notes?: string;
-    barcode?: string;
-    shades?: string[];
+    shades: Array<{
+      shade: string;
+      costPrice: number;
+      salePrice: number;
+    }>;
   }) => apiRequest<{ success: boolean; marbles: any[] }>('/marbles/create', {
     method: 'POST',
     body: JSON.stringify(data),

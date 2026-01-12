@@ -11,7 +11,6 @@ interface Transaction {
   color: string;
   quantity: number;
   unit?: string;
-  location: string;
   batchNumber: string;
   performedBy: string;
   timestamp: string;
@@ -102,7 +101,6 @@ export function TransactionHistory() {
         'Color',
         'Quantity',
         'Unit',
-        'Location',
         'Batch Number',
         'Performed By',
         'Date & Time',
@@ -120,7 +118,6 @@ export function TransactionHistory() {
             `"${txn.color}"`,
             txn.quantity,
             txn.unit || 'kg',
-            txn.location,
             txn.batchNumber,
             `"${txn.performedBy}"`,
             txn.timestamp,
@@ -359,9 +356,6 @@ export function TransactionHistory() {
                     Quantity (kg)
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Location
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Batch Number
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
@@ -375,13 +369,13 @@ export function TransactionHistory() {
               <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
                 {loading ? (
                   <tr>
-                    <td colSpan={8} className="px-6 py-12 text-center">
+                    <td colSpan={7} className="px-6 py-12 text-center">
                       <p className="text-gray-500 dark:text-gray-400">Loading transactions...</p>
                     </td>
                   </tr>
                 ) : error ? (
                   <tr>
-                    <td colSpan={8} className="px-6 py-12 text-center">
+                    <td colSpan={7} className="px-6 py-12 text-center">
                       <p className="text-red-500 dark:text-red-400">{error}</p>
                     </td>
                   </tr>
@@ -430,9 +424,6 @@ export function TransactionHistory() {
                           {transaction.quantity} {transaction.unit || 'kg'}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
-                        {transaction.location}
-                      </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-mono text-gray-900 dark:text-white">
                           {transaction.batchNumber}
@@ -448,7 +439,7 @@ export function TransactionHistory() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={8} className="px-6 py-12 text-center">
+                    <td colSpan={7} className="px-6 py-12 text-center">
                       <p className="text-gray-500 dark:text-gray-400">No transactions found matching your filters</p>
                     </td>
                   </tr>

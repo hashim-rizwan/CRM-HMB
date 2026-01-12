@@ -37,14 +37,12 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
 
   const [newItemFormData, setNewItemFormData] = useState({
     marbleType: '',
-    costPrice: '',
-    salePrice: '',
     notes: '',
     shades: {
-      AA: false,
-      A: false,
-      B: false,
-      'B-': false,
+      AA: { active: false, costPrice: '', salePrice: '' },
+      A: { active: false, costPrice: '', salePrice: '' },
+      B: { active: false, costPrice: '', salePrice: '' },
+      'B-': { active: false, costPrice: '', salePrice: '' },
     },
   });
   const [generatedBarcode, setGeneratedBarcode] = useState<string>('');
@@ -73,7 +71,7 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
         color: addFormData.shade, // Use shade as color
         quantity: totalSquareFeet,
         unit: 'square feet',
-        location: 'N/A', // Default location
+        location: 'N/A', // Default location (will be removed from schema)
         supplier: undefined,
         batchNumber: undefined, // No batch number, using shade instead
         costPrice: undefined,
@@ -156,19 +154,41 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
   };
 
   const handleNewItemChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    if (e.target.type === 'checkbox') {
-      const checkbox = e.target as HTMLInputElement;
+    const { name, value, type } = e.target;
+    
+    // Handle checkbox for shade activation
+    if (type === 'checkbox' && name.startsWith('shade-')) {
+      const shade = name.replace('shade-', '');
       setNewItemFormData({
         ...newItemFormData,
         shades: {
           ...newItemFormData.shades,
-          [checkbox.name]: checkbox.checked,
+          [shade]: {
+            ...newItemFormData.shades[shade as keyof typeof newItemFormData.shades],
+            active: (e.target as HTMLInputElement).checked,
+          },
+        },
+      });
+      return;
+    }
+    
+    // Handle shade pricing fields (format: "shade-field" e.g., "AA-costPrice", "A-salePrice")
+    if (name.includes('-') && !name.startsWith('shade-')) {
+      const [shade, field] = name.split('-');
+      setNewItemFormData({
+        ...newItemFormData,
+        shades: {
+          ...newItemFormData.shades,
+          [shade]: {
+            ...newItemFormData.shades[shade as keyof typeof newItemFormData.shades],
+            [field]: value,
+          },
         },
       });
     } else {
       setNewItemFormData({
         ...newItemFormData,
-        [e.target.name]: e.target.value,
+        [name]: value,
       });
     }
   };
@@ -180,23 +200,51 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
     setSuccessMessage(null);
 
     try {
-      // Get selected shades
-      const selectedShades = Object.entries(newItemFormData.shades)
-        .filter(([_, isSelected]) => isSelected)
-        .map(([shade, _]) => shade);
+      // Get active shades
+      const activeShades = Object.entries(newItemFormData.shades)
+        .filter(([_, data]) => data.active);
 
-      if (selectedShades.length === 0) {
-        setError('Please select at least one shade');
+      if (activeShades.length === 0) {
+        setError('Please activate at least one shade');
+        setLoading(false);
+        return;
+      }
+
+      // Build shades array with pricing data (only for active shades)
+      const shadesData = activeShades
+        .map(([shade, data]) => ({
+          shade,
+          costPrice: parseFloat(data.costPrice),
+          salePrice: parseFloat(data.salePrice),
+        }))
+        .filter((s) => !isNaN(s.costPrice) && !isNaN(s.salePrice)); // Filter out invalid entries
+
+      // Validate that all active shades have both prices
+      const incompleteShades = activeShades.filter(([_, data]) => !data.costPrice || !data.salePrice);
+      if (incompleteShades.length > 0) {
+        setError(`Please enter both cost and sale price for all active shades. Missing prices for: ${incompleteShades.map(([shade, _]) => shade).join(', ')}`);
+        setLoading(false);
+        return;
+      }
+
+      if (shadesData.length === 0) {
+        setError('Please enter valid pricing for at least one active shade');
+        setLoading(false);
+        return;
+      }
+
+      // Validate that all prices are valid numbers
+      const invalidShades = shadesData.filter(s => isNaN(s.costPrice) || isNaN(s.salePrice) || s.costPrice < 0 || s.salePrice < 0);
+      if (invalidShades.length > 0) {
+        setError(`Please enter valid prices (non-negative numbers) for all shades. Invalid prices for: ${invalidShades.map(s => s.shade).join(', ')}`);
         setLoading(false);
         return;
       }
 
       const response = await marblesAPI.create({
         marbleType: newItemFormData.marbleType,
-        costPrice: newItemFormData.costPrice ? parseFloat(newItemFormData.costPrice) : undefined,
-        salePrice: newItemFormData.salePrice ? parseFloat(newItemFormData.salePrice) : undefined,
         notes: newItemFormData.notes || undefined,
-        shades: selectedShades,
+        shades: shadesData,
       });
       
       // Store the generated barcodes from response
@@ -210,14 +258,12 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
 
       setNewItemFormData({
         marbleType: '',
-        costPrice: '',
-        salePrice: '',
         notes: '',
         shades: {
-          AA: false,
-          A: false,
-          B: false,
-          'B-': false,
+          AA: { active: false, costPrice: '', salePrice: '' },
+          A: { active: false, costPrice: '', salePrice: '' },
+          B: { active: false, costPrice: '', salePrice: '' },
+          'B-': { active: false, costPrice: '', salePrice: '' },
         },
       });
       
@@ -233,7 +279,7 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
     }
   };
 
-  // Extract unique marble types and locations from inventory data
+  // Extract unique marble types from inventory data
   const marbleTypes = useMemo(() => {
     const types = new Set<string>();
     inventory.forEach((marble: any) => {
@@ -242,19 +288,6 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
       }
     });
     return Array.from(types).sort();
-  }, [inventory]);
-
-  const locations = useMemo(() => {
-    const locs = new Set<string>();
-    inventory.forEach((marble: any) => {
-      if (marble.location) {
-        locs.add(marble.location);
-      }
-    });
-    // Add default locations if none exist
-    const defaultLocations = ['A-01', 'A-02', 'B-01', 'B-02', 'C-01', 'C-02', 'D-01', 'D-02', 'E-01', 'E-02'];
-    defaultLocations.forEach(loc => locs.add(loc));
-    return Array.from(locs).sort();
   }, [inventory]);
 
   // Fetch inventory data from API
@@ -466,7 +499,7 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
               <p className="text-sm text-gray-600 dark:text-gray-400">Create a new marble type with pricing information. Stock can be added later using "Add Stock".</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div className="grid grid-cols-1 gap-6 mb-6">
               {/* Marble Type */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -483,69 +516,100 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
                 />
               </div>
 
-              {/* Cost Price */}
+              {/* Shades Pricing Sections */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Cost Price / sq ft
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
+                  Shade Pricing <span className="text-[#DC2626]">*</span>
                 </label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400">
-                    PKR
-                  </span>
-                  <input
-                    type="number"
-                    name="costPrice"
-                    value={newItemFormData.costPrice}
-                    onChange={handleNewItemChange}
-                    placeholder="e.g., 100.00"
-                    className="w-full pl-12 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
-                  />
-                </div>
-              </div>
-
-              {/* Sale Price */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Sale Price / sq ft
-                </label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400">
-                    PKR
-                  </span>
-                  <input
-                    type="number"
-                    name="salePrice"
-                    value={newItemFormData.salePrice}
-                    onChange={handleNewItemChange}
-                    placeholder="e.g., 150.00"
-                    className="w-full pl-12 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
-                  />
-                </div>
-              </div>
-
-              {/* Shades */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Shades
-                </label>
-                <div className="grid grid-cols-4 gap-2">
-                  {['AA', 'A', 'B', 'B-'].map((shade) => (
-                    <label
-                      key={shade}
-                      className="flex items-center gap-1.5 p-1.5 border border-gray-300 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                    >
-                      <input
-                        type="checkbox"
-                        name={shade}
-                        checked={newItemFormData.shades[shade as keyof typeof newItemFormData.shades]}
-                        onChange={handleNewItemChange}
-                        className="w-3 h-3 text-[#2563EB] border-gray-300 rounded focus:ring-1 focus:ring-[#2563EB] dark:bg-gray-800 dark:border-gray-600"
-                      />
-                      <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                        {shade}
-                      </span>
-                    </label>
-                  ))}
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                  Activate shades and enter cost and sale price for each active shade.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {['AA', 'A', 'B', 'B-'].map((shade) => {
+                    const shadeData = newItemFormData.shades[shade as keyof typeof newItemFormData.shades];
+                    const isActive = shadeData.active;
+                    return (
+                      <div
+                        key={shade}
+                        className={`border rounded-lg p-4 transition-all ${
+                          isActive
+                            ? 'border-[#2563EB] dark:border-blue-600 bg-blue-50 dark:bg-blue-900/20'
+                            : 'border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 opacity-60'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <h5 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                            Shade: {shade}
+                          </h5>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              name={`shade-${shade}`}
+                              checked={isActive}
+                              onChange={handleNewItemChange}
+                              className="w-4 h-4 text-[#2563EB] border-gray-300 rounded focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:border-gray-600"
+                            />
+                            <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                              {isActive ? 'Active' : 'Inactive'}
+                            </span>
+                          </label>
+                        </div>
+                        {isActive && (
+                          <div className="space-y-3">
+                            {/* Cost Price */}
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                                Cost Price / sq ft <span className="text-[#DC2626]">*</span>
+                              </label>
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-xs text-gray-500 dark:text-gray-400">
+                                  PKR
+                                </span>
+                                <input
+                                  type="number"
+                                  name={`${shade}-costPrice`}
+                                  value={shadeData.costPrice}
+                                  onChange={handleNewItemChange}
+                                  required={isActive}
+                                  step="0.01"
+                                  min="0"
+                                  placeholder="e.g., 100.00"
+                                  className="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+                                />
+                              </div>
+                            </div>
+                            {/* Sale Price */}
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                                Sale Price / sq ft <span className="text-[#DC2626]">*</span>
+                              </label>
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-xs text-gray-500 dark:text-gray-400">
+                                  PKR
+                                </span>
+                                <input
+                                  type="number"
+                                  name={`${shade}-salePrice`}
+                                  value={shadeData.salePrice}
+                                  onChange={handleNewItemChange}
+                                  required={isActive}
+                                  step="0.01"
+                                  min="0"
+                                  placeholder="e.g., 150.00"
+                                  className="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {!isActive && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 italic">
+                            Activate this shade to enter pricing
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -593,14 +657,12 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
                  onClick={() => {
                    setNewItemFormData({
                      marbleType: '',
-                     costPrice: '',
-                     salePrice: '',
                      notes: '',
                      shades: {
-                       AA: false,
-                       A: false,
-                       B: false,
-                       'B-': false,
+                       AA: { active: false, costPrice: '', salePrice: '' },
+                       A: { active: false, costPrice: '', salePrice: '' },
+                       B: { active: false, costPrice: '', salePrice: '' },
+                       'B-': { active: false, costPrice: '', salePrice: '' },
                      },
                    });
                    setGeneratedBarcode('');
@@ -644,25 +706,22 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Marble Type <span className="text-[#DC2626]">*</span>
                 </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    name="marbleType"
-                    value={addFormData.marbleType}
-                    onChange={handleAddChange}
-                    list="marbleTypesList"
-                    required
-                    placeholder="Type or select marble type"
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
-                  />
-                  <datalist id="marbleTypesList">
-                    {filteredMarbleTypes.map((type) => (
-                      <option key={type} value={type} />
-                    ))}
-                  </datalist>
-                </div>
+                <select
+                  name="marbleType"
+                  value={addFormData.marbleType}
+                  onChange={handleAddChange}
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+                >
+                  <option value="">Select marble type</option>
+                  {filteredMarbleTypes.map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Type a new marble type or select from existing ones
+                  Select from existing marble types. Use "Add New Item" to create new marble types.
                 </p>
               </div>
 

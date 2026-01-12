@@ -16,7 +16,6 @@ export async function GET(request: NextRequest) {
       quantity: 'quantity',
       costPrice: 'costPrice',
       salePrice: 'salePrice',
-      location: 'location',
       status: 'status',
       updatedAt: 'updatedAt',
       createdAt: 'createdAt',
@@ -39,7 +38,6 @@ export async function GET(request: NextRequest) {
         color: string;
         quantity: number;
         unit: string | null;
-        locations: Set<string>;
         costPrice: number | null;
         salePrice: number | null;
         status: string;
@@ -65,7 +63,6 @@ export async function GET(request: NextRequest) {
           color: marble.color,
           quantity: marble.quantity,
           unit: marble.unit,
-          locations: new Set([marble.location]),
           costPrice: marble.costPrice,
           salePrice: marble.salePrice,
           status: marble.status,
@@ -74,7 +71,6 @@ export async function GET(request: NextRequest) {
         });
       } else {
         existing.quantity += marble.quantity;
-        existing.locations.add(marble.location);
         // Prefer the most recently updated record for status/prices/unit
         // BUT keep the original ID (from oldest batch)
         if (marble.updatedAt > existing.updatedAt) {
@@ -88,14 +84,8 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Convert map to array and finalize fields (e.g., location display)
-    let marbles = Array.from(aggregatedMap.values()).map((item) => ({
-      ...item,
-      location:
-        item.locations.size === 1
-          ? Array.from(item.locations)[0]
-          : 'Multiple',
-    }));
+    // Convert map to array
+    let marbles = Array.from(aggregatedMap.values());
 
     // Filter by search query if provided (on aggregated data)
     if (search) {
@@ -103,8 +93,7 @@ export async function GET(request: NextRequest) {
       marbles = marbles.filter(
         (marble) =>
           marble.marbleType.toLowerCase().includes(searchLower) ||
-          marble.color.toLowerCase().includes(searchLower) ||
-          marble.location.toLowerCase().includes(searchLower)
+          marble.color.toLowerCase().includes(searchLower)
       );
     }
 

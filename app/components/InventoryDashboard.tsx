@@ -10,7 +10,6 @@ interface InventoryItem {
   color: string;
   quantity: number;
   unit: string;
-  location: string;
   costPrice: number;
   salePrice: number;
   status: 'In Stock' | 'Low Stock' | 'Out of Stock';
@@ -37,7 +36,6 @@ const elasticSearch = (items: InventoryItem[], query: string): InventoryItem[] =
       item.id,
       item.marbleType,
       item.color,
-      item.location,
       item.status,
       item.unit,
       item.costPrice.toString(),
@@ -86,7 +84,6 @@ export function InventoryDashboard({ searchQuery = '', userRole = 'Staff' }: Inv
         color: marble.color,
         quantity: marble.quantity,
         unit: marble.unit,
-        location: marble.location,
         costPrice: marble.costPrice || 0,
         salePrice: marble.salePrice || 0,
         status: marble.status as 'In Stock' | 'Low Stock' | 'Out of Stock',
@@ -304,12 +301,6 @@ export function InventoryDashboard({ searchQuery = '', userRole = 'Staff' }: Inv
                 )}
                 <th 
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                  onClick={() => handleSort('location')}
-                >
-                  Location {getSortIcon('location')}
-                </th>
-                <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                   onClick={() => handleSort('status')}
                 >
                   Status {getSortIcon('status')}
@@ -325,7 +316,7 @@ export function InventoryDashboard({ searchQuery = '', userRole = 'Staff' }: Inv
             <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
               {filteredInventory.length === 0 ? (
                 <tr>
-                  <td colSpan={userRole === 'Admin' ? 10 : 9} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                  <td colSpan={userRole === 'Admin' ? 9 : 8} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
                     No inventory items found matching "{searchQuery}"
                   </td>
                 </tr>
@@ -358,7 +349,6 @@ export function InventoryDashboard({ searchQuery = '', userRole = 'Staff' }: Inv
                         {userRole === 'Admin' && (
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#16A34A] dark:text-green-400">{`PKR ${item.salePrice}/${item.unit}`}</td>
                         )}
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">{item.location}</td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(item.status)}`}>
                             {item.status}
@@ -369,7 +359,7 @@ export function InventoryDashboard({ searchQuery = '', userRole = 'Staff' }: Inv
                       {/* Expanded Batch Details Row */}
                       {isExpanded && (
                         <tr className="bg-gray-50 dark:bg-gray-800/50">
-                          <td colSpan={userRole === 'Admin' ? 10 : 8} className="px-6 py-4">
+                          <td colSpan={userRole === 'Admin' ? 9 : 8} className="px-6 py-4">
                             <div className="pl-8">
                               <h4 className="text-sm font-semibold text-[#1F2937] dark:text-white mb-3">
                                 Batch Details for {item.marbleType}
@@ -394,7 +384,6 @@ export function InventoryDashboard({ searchQuery = '', userRole = 'Staff' }: Inv
                                         <th className="px-4 py-2 text-left font-medium text-gray-700 dark:text-gray-300">ID</th>
                                         <th className="px-4 py-2 text-left font-medium text-gray-700 dark:text-gray-300">Batch #</th>
                                         <th className="px-4 py-2 text-left font-medium text-gray-700 dark:text-gray-300">Supplier</th>
-                                        <th className="px-4 py-2 text-left font-medium text-gray-700 dark:text-gray-300">Location</th>
                                         <th className="px-4 py-2 text-left font-medium text-gray-700 dark:text-gray-300">Quantity</th>
                                         <th className="px-4 py-2 text-left font-medium text-gray-700 dark:text-gray-300">Unit</th>
                                         {userRole === 'Admin' && (
@@ -417,9 +406,6 @@ export function InventoryDashboard({ searchQuery = '', userRole = 'Staff' }: Inv
                                           </td>
                                           <td className="px-4 py-2 whitespace-nowrap text-gray-700 dark:text-gray-200">
                                             {batch.supplier || '-'}
-                                          </td>
-                                          <td className="px-4 py-2 whitespace-nowrap text-gray-700 dark:text-gray-200">
-                                            {batch.location}
                                           </td>
                                           <td className="px-4 py-2 whitespace-nowrap text-gray-700 dark:text-gray-200">
                                             {batch.quantity.toLocaleString()}

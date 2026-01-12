@@ -22,17 +22,26 @@ async function generateUniqueBarcode(): Promise<string> {
   return barcode;
 }
 
-// Generate unique barcode for a specific marble type and shade
-async function generateUniqueBarcodeForShade(marbleType: string, shade: string): Promise<string> {
+// Generate unique barcode for a specific marble type, shade, cost price, and sale price
+// Format: {PREFIX}-{SHADE}-{COST}-{SALE}-{RANDOM}
+// Example: TRA-AA-100-150-1234
+async function generateUniqueBarcodeForShade(
+  marbleType: string,
+  shade: string,
+  costPrice: number,
+  salePrice: number
+): Promise<string> {
   let barcode: string = '';
   let exists = true;
   const prefix = marbleType.replace(/\s+/g, '').toUpperCase().slice(0, 3) || 'HMB';
   const shadeCode = shade.replace(/-/g, '').toUpperCase();
+  const costCode = Math.round(costPrice).toString().padStart(4, '0'); // 4-digit cost code
+  const saleCode = Math.round(salePrice).toString().padStart(4, '0'); // 4-digit sale code
   
   while (exists) {
     // Generate 4-digit random number
     const randomNum = Math.floor(1000 + Math.random() * 9000);
-    barcode = `${prefix}-${shadeCode}-${randomNum}`;
+    barcode = `${prefix}-${shadeCode}-${costCode}-${saleCode}-${randomNum}`;
     
     // Check if barcode already exists
     const existing = await prisma.marble.findUnique({
@@ -49,16 +58,11 @@ export async function POST(request: NextRequest) {
   try {
     const {
       marbleType,
-      supplier,
-      batchNumber,
-      costPrice,
-      salePrice,
       notes,
-      barcode,
-      shades, // Array of selected shades: ['AA', 'A', 'B', 'B-']
+      shades, // Array of shade objects: [{ shade: 'AA', costPrice: 100, salePrice: 150 }, ...]
     } = await request.json();
 
-    // Validation - only marbleType is required
+    // Validation - marbleType is required
     if (!marbleType) {
       return NextResponse.json(
         { error: 'Marble type is required' },
@@ -69,9 +73,37 @@ export async function POST(request: NextRequest) {
     // Validate shades array
     if (!shades || !Array.isArray(shades) || shades.length === 0) {
       return NextResponse.json(
-        { error: 'At least one shade must be selected' },
+        { error: 'At least one shade with pricing must be provided' },
         { status: 400 }
       );
+    }
+
+    // Validate each shade has both prices
+    for (const shadeData of shades) {
+      if (!shadeData.shade) {
+        return NextResponse.json(
+          { error: 'Shade name is required for all entries' },
+          { status: 400 }
+        );
+      }
+      if (shadeData.costPrice === undefined || shadeData.costPrice === null) {
+        return NextResponse.json(
+          { error: `Cost price is required for shade ${shadeData.shade}` },
+          { status: 400 }
+        );
+      }
+      if (shadeData.salePrice === undefined || shadeData.salePrice === null) {
+        return NextResponse.json(
+          { error: `Sale price is required for shade ${shadeData.shade}` },
+          { status: 400 }
+        );
+      }
+      if (shadeData.costPrice < 0 || shadeData.salePrice < 0) {
+        return NextResponse.json(
+          { error: `Prices must be non-negative for shade ${shadeData.shade}` },
+          { status: 400 }
+        );
+      }
     }
 
     // Check if marble type already exists (check for any entry with this marble type)
@@ -89,12 +121,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create one marble entry for each selected shade
+    // Create one marble entry for each shade with its pricing
     const createdMarbles = [];
     
-    for (const shade of shades) {
-      // Generate unique barcode for this marble type and shade combination
-      const shadeBarcode = await generateUniqueBarcodeForShade(marbleType, shade);
+    for (const shadeData of shades) {
+      const { shade, costPrice, salePrice } = shadeData;
+      
+      // Generate unique barcode for this marble type, shade, cost price, and sale price
+      const shadeBarcode = await generateUniqueBarcodeForShade(
+        marbleType,
+        shade,
+        parseFloat(costPrice),
+        parseFloat(salePrice)
+      );
 
       // Create marble entry for this shade
       const marble = await prisma.marble.create({
@@ -103,12 +142,12 @@ export async function POST(request: NextRequest) {
           color: shade, // Store shade in color field
           quantity: 0, // No stock initially
           unit: 'square feet', // Default unit
-          location: 'N/A', // Not in stock yet
-          supplier: supplier || null,
+          location: 'N/A', // Required by schema but not used
+          supplier: null,
           batchNumber: null, // No batch number for template entries
           barcode: shadeBarcode,
-          costPrice: costPrice ? parseFloat(costPrice) : null,
-          salePrice: salePrice ? parseFloat(salePrice) : null,
+          costPrice: parseFloat(costPrice),
+          salePrice: parseFloat(salePrice),
           notes: notes || null,
           status: 'Out of Stock', // No stock yet
         },
@@ -118,10 +157,19 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true, marbles: createdMarbles }, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating marble type:', error);
+    
+    // Handle Prisma unique constraint errors
+    if (error.code === 'P2002') {
+      return NextResponse.json(
+        { error: 'A marble entry with this barcode already exists. Please try again.' },
+        { status: 400 }
+      );
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to create marble type' },
+      { error: error.message || 'Failed to create marble type' },
       { status: 500 }
     );
   }
