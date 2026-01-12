@@ -1,0 +1,1531 @@
+openapi: 3.0.3
+info:
+  title: Marble Inventory System API
+  description: RESTful API for managing marble inventory, stock operations, barcodes, users, and transactions
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@haqeeqmarbles.com
+
+servers:
+  - url: /api
+    description: Local development server
+  - url: https://your-domain.com/api
+    description: Production server
+
+tags:
+  - name: Auth
+    description: Authentication endpoints
+  - name: Stock
+    description: Stock management operations (add, remove, reserve)
+  - name: Inventory
+    description: Inventory queries and statistics
+  - name: Barcode
+    description: Barcode management and lookup
+  - name: Marbles
+    description: Marble type management
+  - name: Transactions
+    description: Stock transaction history
+  - name: Users
+    description: User management
+  - name: Notifications
+    description: System notifications
+  - name: Reports
+    description: Reporting and analytics
+  - name: Backup
+    description: Data backup and restore
+
+paths:
+  # ==================== AUTH ====================
+  /auth/login:
+    post:
+      tags:
+        - Auth
+      summary: User login
+      description: Authenticate user with username and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                  example: admin
+                password:
+                  type: string
+                  format: password
+                  example: admin123
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Account disabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ==================== STOCK ====================
+  /stock/add:
+    post:
+      tags:
+        - Stock
+      summary: Add stock
+      description: Add new stock for a marble type and shade
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddStockRequest'
+      responses:
+        '201':
+          description: Stock added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockAddResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: Marble type not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /stock/remove:
+    post:
+      tags:
+        - Stock
+      summary: Remove stock
+      description: Remove stock by exact slab configuration matching
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RemoveStockRequest'
+      responses:
+        '200':
+          description: Stock removed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockRemoveResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: Insufficient stock or marble not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /stock/reserve:
+    post:
+      tags:
+        - Stock
+      summary: Reserve stock
+      description: Reserve stock for a client
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReserveStockRequest'
+      responses:
+        '201':
+          description: Stock reserved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReserveStockResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: Insufficient stock or marble not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /stock/reserved:
+    get:
+      tags:
+        - Stock
+      summary: Get reserved stock
+      description: Fetch all reserved stock with pagination and filters
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by marble type, shade, or client name
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [all, Reserved, Released, Delivered]
+          description: Filter by reservation status
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+          description: Page number
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+          description: Items per page
+      responses:
+        '200':
+          description: Reserved stock list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservedStockListResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /stock/reserved/{id}/release:
+    post:
+      tags:
+        - Stock
+      summary: Release reserved stock
+      description: Release a reservation and restore stock to inventory
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Reservation ID
+      responses:
+        '200':
+          description: Reservation released successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /stock/reserved/{id}/checkout:
+    post:
+      tags:
+        - Stock
+      summary: Checkout reserved stock
+      description: Mark reserved stock as delivered (does not restore to inventory)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Reservation ID
+      responses:
+        '200':
+          description: Reservation checked out successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /stock/in:
+    post:
+      tags:
+        - Stock
+      summary: Add stock via barcode
+      description: Add stock using barcode scan (legacy endpoint)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - barcode
+                - quantity
+              properties:
+                barcode:
+                  type: string
+                quantity:
+                  type: number
+      responses:
+        '200':
+          description: Stock added successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /stock/out:
+    post:
+      tags:
+        - Stock
+      summary: Remove stock via barcode
+      description: Remove stock using barcode scan (legacy endpoint)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - barcode
+                - quantity
+              properties:
+                barcode:
+                  type: string
+                quantity:
+                  type: number
+      responses:
+        '200':
+          description: Stock removed successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ==================== INVENTORY ====================
+  /inventory:
+    get:
+      tags:
+        - Inventory
+      summary: Get inventory list
+      description: Fetch all inventory items with search and sorting
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by marble type or shade
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum: [id, marbleType, color, quantity, costPrice, salePrice, status, updatedAt, createdAt]
+            default: updatedAt
+        - name: sortOrder
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: Inventory list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryListResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /inventory/grouped:
+    get:
+      tags:
+        - Inventory
+      summary: Get grouped inventory
+      description: Get inventory grouped by marble type, then by shade, then by slab entries
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by marble type or shade
+      responses:
+        '200':
+          description: Grouped inventory data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GroupedInventoryResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /inventory/stats:
+    get:
+      tags:
+        - Inventory
+      summary: Get inventory statistics
+      description: Get overall inventory statistics
+      responses:
+        '200':
+          description: Inventory statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryStatsResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /inventory/marble-types:
+    get:
+      tags:
+        - Inventory
+      summary: Get marble types
+      description: Get all marble types with their available shades
+      responses:
+        '200':
+          description: Marble types list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarbleTypesResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /inventory/details:
+    get:
+      tags:
+        - Inventory
+      summary: Get inventory details
+      description: Get detailed stock entries for a specific marble type
+      parameters:
+        - name: marbleType
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Marble type name
+      responses:
+        '200':
+          description: Inventory details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryDetailsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /inventory/barcode:
+    get:
+      tags:
+        - Inventory
+        - Barcode
+      summary: Get marble by barcode
+      description: Lookup marble information by barcode
+      parameters:
+        - name: barcode
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Barcode value
+      responses:
+        '200':
+          description: Marble information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarbleByBarcodeResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ==================== BARCODE ====================
+  /barcodes:
+    get:
+      tags:
+        - Barcode
+      summary: Get all barcodes
+      description: Fetch all barcodes grouped by marble type
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by marble type or barcode
+      responses:
+        '200':
+          description: Barcodes list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BarcodesResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ==================== MARBLES ====================
+  /marbles/create:
+    post:
+      tags:
+        - Marbles
+      summary: Create marble type
+      description: Create a new marble type with shades, prices, and barcodes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMarbleRequest'
+      responses:
+        '201':
+          description: Marble type created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateMarbleResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ==================== TRANSACTIONS ====================
+  /transactions:
+    get:
+      tags:
+        - Transactions
+      summary: Get transaction history
+      description: Fetch stock transaction history with filters and pagination
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by transaction ID, marble type, or user
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [IN, OUT]
+          description: Filter by transaction type
+        - name: marbleType
+          in: query
+          schema:
+            type: string
+          description: Filter by marble type
+        - name: requestedBy
+          in: query
+          schema:
+            type: string
+          description: Filter by user who performed the transaction
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Start date (YYYY-MM-DD)
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date
+          description: End date (YYYY-MM-DD)
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum: [id, createdAt, quantity, type]
+            default: createdAt
+        - name: sortOrder
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Transaction history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionsResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ==================== USERS ====================
+  /users:
+    get:
+      tags:
+        - Users
+      summary: Get all users
+      description: Fetch all users (passwords excluded)
+      responses:
+        '200':
+          description: Users list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsersListResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      tags:
+        - Users
+      summary: Create user
+      description: Create a new user account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /users/{id}:
+    get:
+      tags:
+        - Users
+      summary: Get user by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    put:
+      tags:
+        - Users
+      summary: Update user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    patch:
+      tags:
+        - Users
+      summary: Update user status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum: [Active, Disabled]
+      responses:
+        '200':
+          description: User status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /users/profile:
+    get:
+      tags:
+        - Users
+      summary: Get current user profile
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /users/change-password:
+    post:
+      tags:
+        - Users
+      summary: Change password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - currentPassword
+                - newPassword
+              properties:
+                currentPassword:
+                  type: string
+                  format: password
+                newPassword:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: Password changed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ==================== NOTIFICATIONS ====================
+  /notifications:
+    get:
+      tags:
+        - Notifications
+      summary: Get notifications
+      description: Fetch recent notifications (last 50)
+      responses:
+        '200':
+          description: Notifications list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationsResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    patch:
+      tags:
+        - Notifications
+      summary: Update notification
+      description: Mark notification(s) as read
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: integer
+                  description: Notification ID (if not provided, marks all as read)
+                read:
+                  type: boolean
+                  default: true
+      responses:
+        '200':
+          description: Notification updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ==================== REPORTS ====================
+  /reports/monthly:
+    get:
+      tags:
+        - Reports
+      summary: Get monthly report
+      description: Get monthly usage and inventory trends
+      parameters:
+        - name: month
+          in: query
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}$'
+          description: Month in YYYY-MM format
+      responses:
+        '200':
+          description: Monthly report data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonthlyReportResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ==================== BACKUP ====================
+  /backup/export:
+    get:
+      tags:
+        - Backup
+      summary: Export backup
+      description: Export all data as JSON backup file
+      responses:
+        '200':
+          description: Backup file
+          content:
+            application/json:
+              schema:
+                type: object
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /backup/restore:
+    post:
+      tags:
+        - Backup
+      summary: Restore backup
+      description: Restore data from backup file
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - version
+                - data
+              properties:
+                version:
+                  type: string
+                data:
+                  type: object
+      responses:
+        '200':
+          description: Backup restored successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  schemas:
+    # Common Schemas
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: Error message here
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Operation completed successfully
+
+    # Auth Schemas
+    LoginResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        user:
+          $ref: '#/components/schemas/User'
+
+    # User Schemas
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        fullName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+          nullable: true
+        role:
+          type: string
+          enum: [Admin, Staff]
+        status:
+          type: string
+          enum: [Active, Disabled]
+        department:
+          type: string
+          nullable: true
+        joinedDate:
+          type: string
+          format: date-time
+        lastActive:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateUserRequest:
+      type: object
+      required:
+        - username
+        - password
+        - fullName
+        - email
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          format: password
+        fullName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        role:
+          type: string
+          enum: [Admin, Staff]
+          default: Staff
+        department:
+          type: string
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        fullName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        role:
+          type: string
+          enum: [Admin, Staff]
+        department:
+          type: string
+
+    UserResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        user:
+          $ref: '#/components/schemas/User'
+
+    UsersListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+
+    # Stock Schemas
+    AddStockRequest:
+      type: object
+      required:
+        - marbleType
+        - color
+        - quantity
+      properties:
+        marbleType:
+          type: string
+          example: Travertine
+        color:
+          type: string
+          enum: [AA, A, B, B-]
+          description: Shade
+          example: AA
+        quantity:
+          type: number
+          description: Total square feet
+          example: 125.5
+        unit:
+          type: string
+          default: square feet
+        supplier:
+          type: string
+        notes:
+          type: string
+        barcode:
+          type: string
+        slabSizeLength:
+          type: number
+          description: Slab length in feet
+          example: 4
+        slabSizeWidth:
+          type: number
+          description: Slab width in feet
+          example: 4
+        numberOfSlabs:
+          type: integer
+          description: Number of slabs
+          example: 6
+
+    StockAddResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        stockEntry:
+          type: object
+        marble:
+          type: object
+        shade:
+          type: string
+
+    RemoveStockRequest:
+      type: object
+      required:
+        - marbleType
+        - shade
+        - slabSizeLength
+        - slabSizeWidth
+        - numberOfSlabs
+        - reason
+      properties:
+        barcode:
+          type: string
+        marbleType:
+          type: string
+        shade:
+          type: string
+          enum: [AA, A, B, B-]
+        slabSizeLength:
+          type: number
+        slabSizeWidth:
+          type: number
+        numberOfSlabs:
+          type: integer
+        reason:
+          type: string
+        notes:
+          type: string
+
+    StockRemoveResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+
+    ReserveStockRequest:
+      type: object
+      required:
+        - marbleType
+        - shade
+        - slabSizeLength
+        - slabSizeWidth
+        - numberOfSlabs
+        - clientName
+      properties:
+        barcode:
+          type: string
+        marbleType:
+          type: string
+        shade:
+          type: string
+          enum: [AA, A, B, B-]
+        slabSizeLength:
+          type: number
+        slabSizeWidth:
+          type: number
+        numberOfSlabs:
+          type: integer
+        clientName:
+          type: string
+        clientPhone:
+          type: string
+        clientEmail:
+          type: string
+        notes:
+          type: string
+
+    ReserveStockResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        reservedStock:
+          type: object
+
+    ReservedStockListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        reservedStocks:
+          type: array
+          items:
+            type: object
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    # Inventory Schemas
+    InventoryItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        marbleType:
+          type: string
+        color:
+          type: string
+          description: Shade
+        quantity:
+          type: number
+        unit:
+          type: string
+        costPrice:
+          type: number
+          nullable: true
+        salePrice:
+          type: number
+          nullable: true
+        status:
+          type: string
+          enum: [In Stock, Low Stock, Out of Stock]
+        updatedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    InventoryListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        marbles:
+          type: array
+          items:
+            $ref: '#/components/schemas/InventoryItem'
+
+    GroupedInventoryResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        marbleTypes:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              marbleType:
+                type: string
+              availableShades:
+                type: array
+                items:
+                  type: string
+              totalQuantity:
+                type: number
+              overallStatus:
+                type: string
+              lastUpdated:
+                type: string
+              shades:
+                type: array
+                items:
+                  type: object
+
+    InventoryStatsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        stats:
+          type: object
+          properties:
+            totalItems:
+              type: integer
+            totalQuantity:
+              type: number
+            lowStockCount:
+              type: integer
+            outOfStockCount:
+              type: integer
+            totalInventoryValue:
+              type: number
+
+    MarbleTypesResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        marbleTypes:
+          type: array
+          items:
+            type: object
+            properties:
+              marbleType:
+                type: string
+              shades:
+                type: array
+                items:
+                  type: string
+
+    InventoryDetailsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        batches:
+          type: array
+          items:
+            type: object
+        consistentId:
+          type: integer
+          nullable: true
+
+    MarbleByBarcodeResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        marble:
+          type: object
+          properties:
+            id:
+              type: integer
+            marbleType:
+              type: string
+            color:
+              type: string
+            quantity:
+              type: number
+            unit:
+              type: string
+            costPrice:
+              type: number
+              nullable: true
+            salePrice:
+              type: number
+              nullable: true
+            status:
+              type: string
+            barcode:
+              type: string
+
+    # Barcode Schemas
+    BarcodeItem:
+      type: object
+      properties:
+        id:
+          type: string
+        marbleName:
+          type: string
+        marbleType:
+          type: string
+        barcodeValue:
+          type: string
+        lastPrinted:
+          type: string
+        color:
+          type: string
+          nullable: true
+
+    BarcodesResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        barcodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/BarcodeItem'
+
+    # Marble Schemas
+    CreateMarbleRequest:
+      type: object
+      required:
+        - marbleType
+        - shades
+      properties:
+        marbleType:
+          type: string
+          example: Travertine
+        notes:
+          type: string
+        shades:
+          type: array
+          items:
+            type: object
+            required:
+              - shade
+              - costPrice
+              - salePrice
+            properties:
+              shade:
+                type: string
+                enum: [AA, A, B, B-]
+              costPrice:
+                type: number
+              salePrice:
+                type: number
+
+    CreateMarbleResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        marble:
+          type: object
+        barcodes:
+          type: array
+          items:
+            type: object
+            properties:
+              shade:
+                type: string
+              barcode:
+                type: string
+
+    # Transaction Schemas
+    Transaction:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [added, removed]
+        marbleType:
+          type: string
+        color:
+          type: string
+        quantity:
+          type: number
+        unit:
+          type: string
+        performedBy:
+          type: string
+        timestamp:
+          type: string
+        date:
+          type: string
+          format: date
+        reason:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    TransactionsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        transactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Transaction'
+        filters:
+          type: object
+          properties:
+            marbleTypes:
+              type: array
+              items:
+                type: string
+            users:
+              type: array
+              items:
+                type: string
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+        stats:
+          type: object
+          properties:
+            totalAdded:
+              type: number
+            totalRemoved:
+              type: number
+
+    # Notification Schemas
+    Notification:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+        message:
+          type: string
+        read:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    NotificationsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        notifications:
+          type: array
+          items:
+            $ref: '#/components/schemas/Notification'
+
+    # Report Schemas
+    MonthlyReportResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        monthlyData:
+          type: array
+          items:
+            type: object
+        usageByType:
+          type: array
+          items:
+            type: object
+        trendData:
+          type: array
+          items:
+            type: object
+
+    # Common Utility Schemas
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        totalPages:
+          type: integer
+        hasNextPage:
+          type: boolean
+        hasPrevPage:
+          type: boolean
+
+  responses:
+    BadRequest:
+      description: Bad request - validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: Missing required fields
+
+    Unauthorized:
+      description: Unauthorized - authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: Invalid username or password
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: Marble not found
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: Failed to process request

@@ -86,6 +86,8 @@ export default function App() {
         return 'User Management'
       case 'user-profile':
         return 'User Profile'
+      case 'api-docs':
+        return 'API Documentation'
       case 'settings':
         return 'Settings'
       default:
@@ -125,6 +127,10 @@ export default function App() {
         return <UserManagement />
       case 'user-profile':
         return <UserProfile username={username} onLogout={handleLogout} />
+      case 'api-docs':
+        // Redirect to API docs page
+        window.location.href = '/api-docs'
+        return null
       case 'settings':
         return <Settings username={username} onLogout={handleLogout} />
       default:

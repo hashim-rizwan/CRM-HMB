@@ -1,6 +1,6 @@
 'use client'
 
-import { Package, Plus, Minus, BarChart3, ArrowLeftRight, Bell, Settings as SettingsIcon, Users, Scan, User, History, Bookmark } from 'lucide-react';
+import { Package, Plus, Minus, BarChart3, ArrowLeftRight, Bell, Settings as SettingsIcon, Users, Scan, User, History, Bookmark, FileText } from 'lucide-react';
 
 interface SidebarProps {
   activeScreen: string;
@@ -20,6 +20,7 @@ export function Sidebar({ activeScreen, setActiveScreen, darkMode = false, userR
     { id: 'reserved-stock', label: 'Reserved Stock', icon: Bookmark },
     { id: 'users', label: 'User Management', icon: Users, adminOnly: true },
     { id: 'user-profile', label: 'User Profile', icon: User },
+    { id: 'api-docs', label: 'API Documentation', icon: FileText, adminOnly: true },
     { id: 'settings', label: 'Settings', icon: SettingsIcon },
   ];
 
