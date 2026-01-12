@@ -54,7 +54,6 @@ export async function POST(request: NextRequest) {
               color: marbleData.color,
               quantity: marbleData.quantity || 0,
               unit: marbleData.unit || 'square feet',
-              location: marbleData.location,
               supplier: marbleData.supplier || null,
               batchNumber: marbleData.batchNumber || null,
               barcode: marbleData.barcode || null,

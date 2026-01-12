@@ -195,7 +195,6 @@ export async function POST(request: NextRequest) {
           color: finalColor, // Set shade
           quantity: quantity, // Set quantity (was 0)
           unit: unit, // Update unit
-          location: 'N/A', // Required by schema but not used
           supplier: supplier || templateEntry.supplier,
           batchNumber: null, // No batch number, using shade instead
           barcode: finalBarcode || templateEntry.barcode,
@@ -214,7 +213,6 @@ export async function POST(request: NextRequest) {
           color: finalColor, // Shade stored in color field
           quantity,
           unit,
-          location: 'N/A', // Required by schema but not used
           supplier: supplier || null,
           batchNumber: null, // No batch number, using shade for categorization
           barcode: finalBarcode || null,

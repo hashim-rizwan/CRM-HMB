@@ -14,26 +14,26 @@ datasource db {
 model Marble {
   id                Int                @id @default(autoincrement())
   marbleType        String
-  color             String
-  quantity          Float              @default(0)
-  unit              String             @default("square feet")
-  location          String?            @default("N/A")
-  supplier          String?
-  batchNumber       String?
-  barcode           String?            @unique
-  costPrice        Float?
+  color             String              // Stores shade (AA, A, B, B-)
+  quantity          Float               @default(0)
+  unit              String              @default("square feet")
+  supplier          String?             // Optional supplier info (for backward compatibility)
+  batchNumber       String?             // Optional batch number (for backward compatibility, new entries use shade instead)
+  barcode           String?             @unique
+  costPrice         Float?
   salePrice         Float?
-  status            String             @default("In Stock")
-  notes             String?
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  status            String              @default("In Stock")
+  notes             String?             // Stores slab info: "Slab Size: LENGTHxWIDTH, Number of Slabs: COUNT"
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
   stockTransactions StockTransaction[]
+  reservedStocks    ReservedStock[]
 }
 
 model StockTransaction {
   id          Int      @id @default(autoincrement())
   marbleId    Int
-  marble      Marble   @relation(fields: [marbleId], references: [id])
+  marble      Marble   @relation(fields: [marbleId], references: [id], onDelete: Cascade)
   type        String   // 'IN' or 'OUT'
   quantity    Float
   reason      String?
@@ -65,3 +65,22 @@ model Notification {
   createdAt DateTime @default(now())
 }
 
+model ReservedStock {
+  id                Int      @id @default(autoincrement())
+  marbleId          Int
+  marble            Marble   @relation(fields: [marbleId], references: [id], onDelete: Cascade)
+  clientName        String
+  clientPhone       String?
+  clientEmail       String?
+  quantity          Float
+  slabSizeLength    Float
+  slabSizeWidth     Float
+  numberOfSlabs     Int
+  reservedBy        String?  // Username who reserved
+  notes             String?
+  status            String   @default("Reserved") // 'Reserved', 'Released', 'Cancelled'
+  reservedAt        DateTime @default(now())
+  releasedAt        DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}

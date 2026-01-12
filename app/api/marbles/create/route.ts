@@ -163,7 +163,6 @@ export async function POST(request: NextRequest) {
           color: shade, // Store shade in color field
           quantity: 0, // No stock initially
           unit: 'square feet', // Default unit
-          location: 'N/A', // Required by schema but not used
           supplier: null,
           batchNumber: null, // No batch number for template entries
           barcode: shadeBarcode,

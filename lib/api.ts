@@ -63,6 +63,22 @@ export const stockAPI = {
     method: 'POST',
     body: JSON.stringify(data),
   }),
+
+  reserve: (data: {
+    barcode?: string;
+    marbleType: string;
+    shade: string;
+    slabSizeLength: number;
+    slabSizeWidth: number;
+    numberOfSlabs: number;
+    clientName: string;
+    clientPhone?: string;
+    clientEmail?: string;
+    notes?: string;
+  }) => apiRequest<{ success: boolean; reservedStock: any }>('/stock/reserve', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
 };
 
 // Marbles API - for creating marble types (not stock)

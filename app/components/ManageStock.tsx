@@ -10,7 +10,7 @@ interface ManageStockProps {
 }
 
 export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStockProps) {
-  const [activeTab, setActiveTab] = useState<'add' | 'new-item' | 'remove'>('add');
+  const [activeTab, setActiveTab] = useState<'add' | 'new-item' | 'remove' | 'reserve'>('add');
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [scannedBarcode, setScannedBarcode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -38,7 +38,21 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
     notes: '',
   });
   const [scannedRemoveBarcode, setScannedRemoveBarcode] = useState<string>('');
+  const [scannedReserveBarcode, setScannedReserveBarcode] = useState<string>('');
   const [marbleTypesData, setMarbleTypesData] = useState<Array<{ marbleType: string; shades: string[] }>>([]);
+
+  const [reserveFormData, setReserveFormData] = useState({
+    barcode: '',
+    marbleType: '',
+    shade: '',
+    slabSizeLength: '',
+    slabSizeWidth: '',
+    numberOfSlabs: '',
+    clientName: '',
+    clientPhone: '',
+    clientEmail: '',
+    notes: '',
+  });
 
   const [newItemFormData, setNewItemFormData] = useState({
     marbleType: '',
@@ -177,10 +191,108 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
   };
 
   const handleRemoveChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setRemoveFormData({
-      ...removeFormData,
-      [e.target.name]: e.target.value,
-    });
+    const { name, value } = e.target;
+    
+    // If marble type changes, reset shade
+    if (name === 'marbleType') {
+      setRemoveFormData({
+        ...removeFormData,
+        marbleType: value,
+        shade: '', // Reset shade when marble type changes
+      });
+    } else {
+      setRemoveFormData({
+        ...removeFormData,
+        [name]: value,
+      });
+    }
+  };
+
+  const handleReserveChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    
+    // If marble type changes, reset shade
+    if (name === 'marbleType') {
+      setReserveFormData({
+        ...reserveFormData,
+        marbleType: value,
+        shade: '', // Reset shade when marble type changes
+      });
+    } else {
+      setReserveFormData({
+        ...reserveFormData,
+        [name]: value,
+      });
+    }
+  };
+
+  const handleReserveSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      // Calculate quantity from slab size and number of slabs
+      const length = parseFloat(reserveFormData.slabSizeLength);
+      const width = parseFloat(reserveFormData.slabSizeWidth);
+      const numberOfSlabs = parseFloat(reserveFormData.numberOfSlabs);
+      
+      if (!length || !width || !numberOfSlabs) {
+        throw new Error('Please enter valid slab size and number of slabs');
+      }
+      
+      if (!reserveFormData.clientName) {
+        throw new Error('Client name is required');
+      }
+      
+      // Calculate total square feet: length (ft) × width (ft) × number of slabs
+      const totalSquareFeet = length * width * numberOfSlabs;
+
+      await stockAPI.reserve({
+        barcode: reserveFormData.barcode || scannedReserveBarcode,
+        marbleType: reserveFormData.marbleType,
+        shade: reserveFormData.shade,
+        slabSizeLength: length,
+        slabSizeWidth: width,
+        numberOfSlabs: numberOfSlabs,
+        clientName: reserveFormData.clientName,
+        clientPhone: reserveFormData.clientPhone || undefined,
+        clientEmail: reserveFormData.clientEmail || undefined,
+        notes: reserveFormData.notes || undefined,
+      });
+
+      setReserveFormData({
+        barcode: '',
+        marbleType: '',
+        shade: '',
+        slabSizeLength: '',
+        slabSizeWidth: '',
+        numberOfSlabs: '',
+        clientName: '',
+        clientPhone: '',
+        clientEmail: '',
+        notes: '',
+      });
+      setScannedReserveBarcode('');
+      
+      // Refresh inventory data after reserving stock
+      const response = await inventoryAPI.getAll();
+      setInventory(response.marbles || []);
+      
+      // Refresh marble types data
+      const marbleTypesResponse = await inventoryAPI.getMarbleTypes();
+      if (marbleTypesResponse.marbleTypes) {
+        setMarbleTypesData(marbleTypesResponse.marbleTypes);
+      }
+      
+      setSuccessMessage(`Stock reserved successfully! Reserved: ${totalSquareFeet.toLocaleString()} sq ft for ${reserveFormData.clientName}`);
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } catch (err: any) {
+      setError(err.message || 'Failed to reserve stock');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleNewItemChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -451,6 +563,17 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
           setScannedRemoveBarcode(barcode);
           setSuccessMessage(`Barcode scanned: ${barcode}. Marble: ${marble.marbleType} - ${marble.color}`);
           setTimeout(() => setSuccessMessage(null), 5000);
+        } else if (activeTab === 'reserve') {
+          // Auto-populate Reserve Stock form
+          setReserveFormData({
+            ...reserveFormData,
+            barcode: barcode,
+            marbleType: marble.marbleType,
+            shade: marble.color || '', // Use color field for shade
+          });
+          setScannedReserveBarcode(barcode);
+          setSuccessMessage(`Barcode scanned: ${barcode}. Marble: ${marble.marbleType} - ${marble.color}`);
+          setTimeout(() => setSuccessMessage(null), 5000);
         }
       } else {
         setError(`Barcode ${barcode} not found in database`);
@@ -529,6 +652,23 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
               </div>
               {activeTab === 'remove' && (
                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#DC2626]"></div>
+              )}
+            </button>
+            
+            <button
+              onClick={() => setActiveTab('reserve')}
+              className={`px-6 py-3 font-medium transition-colors relative ${
+                activeTab === 'reserve'
+                  ? 'text-[#F59E0B]'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Package className="w-5 h-5" />
+                Reserve Stock
+              </div>
+              {activeTab === 'reserve' && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#F59E0B]"></div>
               )}
             </button>
             
@@ -1242,6 +1382,33 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
                     <p className="font-medium text-[#1F2937] dark:text-white">
                       {removeFormData.marbleType || 'None selected'}
                     </p>
+                    {removeFormData.shade && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Shade: {removeFormData.shade}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="pb-4 border-b border-gray-200 dark:border-gray-800">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Current Stock</p>
+                    <p className="font-medium text-[#1F2937] dark:text-white">
+                      {(() => {
+                        if (!removeFormData.marbleType) return '-';
+                        // Find stock for this marble type and shade combination
+                        const matchingStock = inventory.find((marble: any) => 
+                          marble.marbleType === removeFormData.marbleType && 
+                          marble.color === removeFormData.shade
+                        );
+                        if (matchingStock) {
+                          return `${matchingStock.quantity.toLocaleString()} ${matchingStock.unit || 'sq ft'}`;
+                        }
+                        // Fallback to total stock for marble type if shade not selected or not found
+                        const currentStock = availableStock.find(s => s.type === removeFormData.marbleType);
+                        return currentStock 
+                          ? `${currentStock.available.toLocaleString()} ${currentStock.unit}`
+                          : '0 sq ft';
+                      })()}
+                    </p>
                   </div>
 
                   <div className="pb-4 border-b border-gray-200 dark:border-gray-800">
@@ -1264,6 +1431,376 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
                       </p>
                     )}
                   </div>
+
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">New Total</p>
+                    <p className="font-semibold text-[#1F2937] dark:text-white">
+                      {(() => {
+                        const length = parseFloat(removeFormData.slabSizeLength);
+                        const width = parseFloat(removeFormData.slabSizeWidth);
+                        const numberOfSlabs = parseFloat(removeFormData.numberOfSlabs);
+                        
+                        if (!length || !width || !numberOfSlabs || !removeFormData.marbleType) return '-';
+                        
+                        const removing = length * width * numberOfSlabs;
+                        
+                        // Find stock for this marble type and shade combination
+                        const matchingStock = inventory.find((marble: any) => 
+                          marble.marbleType === removeFormData.marbleType && 
+                          marble.color === removeFormData.shade
+                        );
+                        
+                        if (matchingStock) {
+                          const newTotal = Math.max(0, matchingStock.quantity - removing);
+                          return `${newTotal.toLocaleString()} ${matchingStock.unit || 'sq ft'}`;
+                        }
+                        
+                        // Fallback to total stock for marble type
+                        const currentStock = availableStock.find(s => s.type === removeFormData.marbleType);
+                        if (currentStock) {
+                          const newTotal = Math.max(0, currentStock.available - removing);
+                          return `${newTotal.toLocaleString()} ${currentStock.unit}`;
+                        }
+                        
+                        return '-';
+                      })()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Reserve Stock Form */}
+        {activeTab === 'reserve' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <form onSubmit={handleReserveSubmit} className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-8">
+            {/* Barcode Scanner Button */}
+            <div className="mb-6 flex justify-end">
+              <button
+                type="button"
+                onClick={handleScanBarcode}
+                className="px-4 py-2 bg-[#2563EB] dark:bg-blue-600 text-white rounded-lg hover:bg-[#1E40AF] dark:hover:bg-blue-700 transition-colors flex items-center gap-2"
+              >
+                <Scan className="w-4 h-4" />
+                Scan Barcode
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              {/* Marble Type */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Marble Type <span className="text-[#DC2626]">*</span>
+                </label>
+                <select
+                  name="marbleType"
+                  value={reserveFormData.marbleType}
+                  onChange={handleReserveChange}
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+                >
+                  <option value="">Select marble type</option>
+                  {marbleTypesData.map((item) => (
+                    <option key={item.marbleType} value={item.marbleType}>
+                      {item.marbleType}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {scannedReserveBarcode ? `Barcode: ${scannedReserveBarcode}` : 'Select from dropdown or scan barcode to auto-fill'}
+                </p>
+              </div>
+
+              {/* Shade */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Shade <span className="text-[#DC2626]">*</span>
+                </label>
+                <select
+                  name="shade"
+                  value={reserveFormData.shade}
+                  onChange={handleReserveChange}
+                  required
+                  disabled={!reserveFormData.marbleType}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:cursor-not-allowed"
+                >
+                  <option value="">
+                    {reserveFormData.marbleType ? 'Select shade' : 'Select marble type first'}
+                  </option>
+                  {reserveFormData.marbleType && (() => {
+                    const selectedMarble = marbleTypesData.find(m => m.marbleType === reserveFormData.marbleType);
+                    return selectedMarble?.shades.map((shade) => (
+                      <option key={shade} value={shade}>
+                        {shade}
+                      </option>
+                    ));
+                  })()}
+                </select>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {scannedReserveBarcode ? 'Auto-filled from barcode' : 'Select shade for the chosen marble type'}
+                </p>
+              </div>
+
+              {/* Slab Size */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Slab Size (ft) <span className="text-[#DC2626]">*</span>
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="number"
+                    name="slabSizeLength"
+                    value={reserveFormData.slabSizeLength}
+                    onChange={handleReserveChange}
+                    required
+                    min="0"
+                    step="0.01"
+                    placeholder="Length"
+                    className="flex-1 min-w-0 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+                  />
+                  <span className="text-gray-500 dark:text-gray-400 flex-shrink-0">×</span>
+                  <input
+                    type="number"
+                    name="slabSizeWidth"
+                    value={reserveFormData.slabSizeWidth}
+                    onChange={handleReserveChange}
+                    required
+                    min="0"
+                    step="0.01"
+                    placeholder="Width"
+                    className="flex-1 min-w-0 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+                  />
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Enter length and width in feet
+                </p>
+              </div>
+
+              {/* Number of Slabs */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Number of Slabs <span className="text-[#DC2626]">*</span>
+                </label>
+                <input
+                  type="number"
+                  name="numberOfSlabs"
+                  value={reserveFormData.numberOfSlabs}
+                  onChange={handleReserveChange}
+                  required
+                  min="1"
+                  step="1"
+                  placeholder="e.g., 10"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Total quantity will be calculated: Length × Width × Number of Slabs
+                </p>
+              </div>
+
+              {/* Client Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Client Name <span className="text-[#DC2626]">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="clientName"
+                  value={reserveFormData.clientName}
+                  onChange={handleReserveChange}
+                  required
+                  placeholder="Enter client name"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+                />
+              </div>
+
+              {/* Client Phone */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Client Phone
+                </label>
+                <input
+                  type="tel"
+                  name="clientPhone"
+                  value={reserveFormData.clientPhone}
+                  onChange={handleReserveChange}
+                  placeholder="Enter client phone"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+                />
+              </div>
+
+              {/* Client Email */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Client Email
+                </label>
+                <input
+                  type="email"
+                  name="clientEmail"
+                  value={reserveFormData.clientEmail}
+                  onChange={handleReserveChange}
+                  placeholder="Enter client email"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+                />
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Notes
+              </label>
+              <textarea
+                name="notes"
+                value={reserveFormData.notes}
+                onChange={handleReserveChange}
+                rows={4}
+                placeholder="Additional notes or comments..."
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 resize-y"
+              />
+            </div>
+
+                {/* Buttons */}
+                <div className="flex items-center justify-end gap-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setReserveFormData({
+                        barcode: '',
+                        marbleType: '',
+                        shade: '',
+                        slabSizeLength: '',
+                        slabSizeWidth: '',
+                        numberOfSlabs: '',
+                        clientName: '',
+                        clientPhone: '',
+                        clientEmail: '',
+                        notes: '',
+                      });
+                      setScannedReserveBarcode('');
+                    }}
+                    className="px-6 py-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    Reset
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="px-6 py-2 bg-[#F59E0B] dark:bg-yellow-600 text-white rounded-lg hover:bg-[#D97706] dark:hover:bg-yellow-700 transition-colors flex items-center gap-2 disabled:bg-gray-400 dark:disabled:bg-gray-700 disabled:cursor-not-allowed disabled:text-gray-200 dark:disabled:text-gray-400"
+                  >
+                    <Package className="w-4 h-4" />
+                    {loading ? 'Reserving...' : 'Reserve Stock'}
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Summary Panel */}
+            <div className="lg:col-span-1">
+              <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-6 sticky top-8">
+                <h4 className="font-semibold text-[#1F2937] dark:text-white mb-4">Quick Summary</h4>
+                
+                <div className="space-y-4">
+                  <div className="pb-4 border-b border-gray-200 dark:border-gray-800">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Selected Item</p>
+                    <p className="font-medium text-[#1F2937] dark:text-white">
+                      {reserveFormData.marbleType || 'None selected'}
+                    </p>
+                    {reserveFormData.shade && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Shade: {reserveFormData.shade}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="pb-4 border-b border-gray-200 dark:border-gray-800">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Current Stock</p>
+                    <p className="font-medium text-[#1F2937] dark:text-white">
+                      {(() => {
+                        if (!reserveFormData.marbleType) return '-';
+                        // Find stock for this marble type and shade combination
+                        const matchingStock = inventory.find((marble: any) => 
+                          marble.marbleType === reserveFormData.marbleType && 
+                          marble.color === reserveFormData.shade
+                        );
+                        if (matchingStock) {
+                          return `${matchingStock.quantity.toLocaleString()} ${matchingStock.unit || 'sq ft'}`;
+                        }
+                        // Fallback to total stock for marble type if shade not selected or not found
+                        const currentStock = availableStock.find(s => s.type === reserveFormData.marbleType);
+                        return currentStock 
+                          ? `${currentStock.available.toLocaleString()} ${currentStock.unit}`
+                          : '0 sq ft';
+                      })()}
+                    </p>
+                  </div>
+
+                  <div className="pb-4 border-b border-gray-200 dark:border-gray-800">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Reserving</p>
+                    <p className="font-medium text-[#F59E0B] dark:text-yellow-400">
+                      {(() => {
+                        const length = parseFloat(reserveFormData.slabSizeLength);
+                        const width = parseFloat(reserveFormData.slabSizeWidth);
+                        const numberOfSlabs = parseFloat(reserveFormData.numberOfSlabs);
+                        if (length && width && numberOfSlabs) {
+                          const totalSqFt = length * width * numberOfSlabs;
+                          return `${totalSqFt.toLocaleString()} sq ft`;
+                        }
+                        return '-';
+                      })()}
+                    </p>
+                    {reserveFormData.slabSizeLength && reserveFormData.slabSizeWidth && reserveFormData.numberOfSlabs && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {reserveFormData.slabSizeLength} × {reserveFormData.slabSizeWidth} × {reserveFormData.numberOfSlabs} slabs
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">New Total</p>
+                    <p className="font-semibold text-[#1F2937] dark:text-white">
+                      {(() => {
+                        const length = parseFloat(reserveFormData.slabSizeLength);
+                        const width = parseFloat(reserveFormData.slabSizeWidth);
+                        const numberOfSlabs = parseFloat(reserveFormData.numberOfSlabs);
+                        
+                        if (!length || !width || !numberOfSlabs || !reserveFormData.marbleType) return '-';
+                        
+                        const reserving = length * width * numberOfSlabs;
+                        
+                        // Find stock for this marble type and shade combination
+                        const matchingStock = inventory.find((marble: any) => 
+                          marble.marbleType === reserveFormData.marbleType && 
+                          marble.color === reserveFormData.shade
+                        );
+                        
+                        if (matchingStock) {
+                          const newTotal = Math.max(0, matchingStock.quantity - reserving);
+                          return `${newTotal.toLocaleString()} ${matchingStock.unit || 'sq ft'}`;
+                        }
+                        
+                        // Fallback to total stock for marble type
+                        const currentStock = availableStock.find(s => s.type === reserveFormData.marbleType);
+                        if (currentStock) {
+                          const newTotal = Math.max(0, currentStock.available - reserving);
+                          return `${newTotal.toLocaleString()} ${currentStock.unit}`;
+                        }
+                        
+                        return '-';
+                      })()}
+                    </p>
+                  </div>
+
+                  {reserveFormData.clientName && (
+                    <div className="pt-4 border-t border-gray-200 dark:border-gray-800">
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Client</p>
+                      <p className="font-medium text-[#1F2937] dark:text-white">
+                        {reserveFormData.clientName}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

@@ -13,6 +13,7 @@ import { Settings } from './components/Settings'
 import { Login } from './components/Login'
 import { UserProfile } from './components/UserProfile'
 import { TransactionHistory } from './components/TransactionHistory'
+import { ReservedStock } from './components/ReservedStock'
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -79,6 +80,8 @@ export default function App() {
         return 'Monthly Usage Report'
       case 'transaction-history':
         return 'Transaction History'
+      case 'reserved-stock':
+        return 'Reserved Stock'
       case 'users':
         return 'User Management'
       case 'user-profile':
@@ -116,6 +119,8 @@ export default function App() {
         return <MonthlyReport searchQuery={searchQuery} />
       case 'transaction-history':
         return <TransactionHistory />
+      case 'reserved-stock':
+        return <ReservedStock />
       case 'users':
         return <UserManagement />
       case 'user-profile':
