@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
       marbleType: marble.marbleType,
       barcodeValue: marble.barcode || '',
       lastPrinted: marble.updatedAt.toISOString().split('T')[0],
+      color: marble.color, // Include the color (shade) field from database
     }));
 
     // Filter by search query if provided

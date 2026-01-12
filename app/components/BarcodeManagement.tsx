@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react';
-import { Barcode, Eye, Printer, Download, ChevronDown, FileImage, FileText, Image, File, Code } from 'lucide-react';
+import { Barcode, Eye, Printer, Download, ChevronDown, FileText, Image, Code } from 'lucide-react';
 import { barcodeAPI } from '@/lib/api';
 import JsBarcode from 'jsbarcode';
 import html2canvas from 'html2canvas';
@@ -13,6 +13,13 @@ interface BarcodeItem {
   marbleType: string;
   barcodeValue: string;
   lastPrinted: string;
+  color?: string; // Shade stored in database
+}
+
+interface MarbleBarcodeGroup {
+  marbleType: string;
+  barcodes: BarcodeItem[];
+  latestPrinted: string;
 }
 
 export function BarcodeManagement() {
@@ -21,6 +28,9 @@ export function BarcodeManagement() {
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [showDownloadDropdown, setShowDownloadDropdown] = useState(false);
+  const [expandedMarble, setExpandedMarble] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const barcodeSvgRef = useRef<SVGSVGElement>(null);
   const downloadDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -68,7 +78,73 @@ export function BarcodeManagement() {
     }
   };
 
-  const filteredBarcodes = barcodes;
+  // Group barcodes by marble type so each marble can expand to show its shades / barcodes
+  const marbleGroups: MarbleBarcodeGroup[] = (() => {
+    const map = new Map<string, MarbleBarcodeGroup>();
+
+    for (const item of barcodes) {
+      const key = item.marbleType || item.marbleName || 'Unknown';
+      const existing = map.get(key);
+      if (!existing) {
+        map.set(key, {
+          marbleType: key,
+          barcodes: [item],
+          latestPrinted: item.lastPrinted,
+        });
+      } else {
+        existing.barcodes.push(item);
+        // Update latestPrinted based on most recent date string
+        if (item.lastPrinted && existing.latestPrinted) {
+          const current = new Date(existing.latestPrinted);
+          const next = new Date(item.lastPrinted);
+          if (next > current) {
+            existing.latestPrinted = item.lastPrinted;
+          }
+        }
+      }
+    }
+
+    // Sort groups alphabetically by marble name
+    const groups = Array.from(map.values()).sort((a, b) =>
+      a.marbleType.localeCompare(b.marbleType),
+    );
+
+    return groups;
+  })();
+
+  // Reset to first page when search query changes
+  useEffect(() => {
+    setPage(1);
+    setExpandedMarble(null);
+  }, [searchQuery, barcodes.length]);
+
+  const totalGroups = marbleGroups.length;
+  const totalPages = Math.max(1, Math.ceil(totalGroups / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedGroups = marbleGroups.slice(startIndex, startIndex + pageSize);
+
+  // Extract shade from barcode value or use color field from database
+  // For "B-" shade, the barcode generation removes the hyphen, so we need to use the color field
+  const extractShade = (barcode: BarcodeItem): string => {
+    // Prefer the color field from database if available (more accurate for "B-")
+    if (barcode.color) {
+      return barcode.color;
+    }
+    // Fallback to extracting from barcode value
+    const parts = barcode.barcodeValue.split('-');
+    if (parts.length >= 2) {
+      return parts[1]; // Return the shade part
+    }
+    return '';
+  };
+
+  const handleToggleExpand = (marbleType: string, firstBarcode: BarcodeItem | undefined) => {
+    setExpandedMarble((prev) => (prev === marbleType ? null : marbleType));
+    if (firstBarcode) {
+      setSelectedBarcode(firstBarcode);
+    }
+  };
 
   const printBarcode = (item: BarcodeItem) => {
     // Create a temporary printable container
@@ -122,38 +198,45 @@ export function BarcodeManagement() {
           top: 0;
           width: 100%;
           height: 100%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
           background: white;
+          padding: 20px;
+        }
+        .print-all-barcodes-wrapper {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 20px;
+          max-width: 100%;
         }
         .print-barcode-wrapper {
           width: 100%;
           max-width: 400px;
           padding: 40px;
         }
-        .print-barcode-content {
+        .print-barcode-content,
+        .print-barcode-item {
           text-align: center;
-          padding: 30px;
+          padding: 20px;
           border: 2px solid #000;
           border-radius: 8px;
           background: white;
+          page-break-inside: avoid;
         }
         .print-marble-name {
-          font-size: 24px;
+          font-size: 20px;
           font-weight: bold;
-          margin-bottom: 20px;
+          margin-bottom: 15px;
           color: #000;
         }
         .print-barcode-visual {
-          margin: 30px 0;
-          padding: 20px;
+          margin: 20px 0;
+          padding: 15px;
           background: white;
         }
-        #print-barcode-svg {
+        #print-barcode-svg,
+        [id^="print-barcode-svg-"] {
           width: 100%;
-          height: 80px;
-          max-width: 400px;
+          height: 60px;
+          max-width: 350px;
           display: block;
           margin: 0 auto;
           -webkit-print-color-adjust: exact;
@@ -162,24 +245,24 @@ export function BarcodeManagement() {
         }
         .print-barcode-value {
           font-family: 'Courier New', monospace;
-          font-size: 28px;
+          font-size: 20px;
           font-weight: bold;
-          letter-spacing: 2px;
-          margin: 20px 0 10px 0;
+          letter-spacing: 1px;
+          margin: 15px 0 5px 0;
           color: #000;
         }
         .print-barcode-type {
-          font-size: 12px;
+          font-size: 10px;
           color: #666;
-          margin-bottom: 20px;
+          margin-bottom: 15px;
         }
         .print-barcode-info {
-          margin-top: 20px;
-          font-size: 14px;
+          margin-top: 15px;
+          font-size: 12px;
           color: #333;
         }
         .print-barcode-info p {
-          margin: 5px 0;
+          margin: 3px 0;
         }
       }
     `;
@@ -223,6 +306,175 @@ export function BarcodeManagement() {
 
     // Clean up when print dialog is closed
     window.addEventListener('afterprint', cleanup, { once: true });
+  };
+
+  const printAllBarcodes = (barcodes: BarcodeItem[], marbleType: string) => {
+    // Create a temporary printable container for all barcodes
+    const printContainer = document.createElement('div');
+    printContainer.id = 'print-barcode-container';
+    
+    // Create wrapper for all barcodes
+    let barcodeHTML = '<div class="print-all-barcodes-wrapper">';
+    
+    barcodes.forEach((item, index) => {
+      const shade = extractShade(item.barcodeValue);
+      barcodeHTML += `
+        <div class="print-barcode-item" data-barcode="${item.barcodeValue}" data-index="${index}">
+          <div class="print-marble-name">${marbleType} - ${shade}</div>
+          <div class="print-barcode-visual">
+            <svg id="print-barcode-svg-${index}" style="width:100%; height:80px; display:block; margin:0 auto;"></svg>
+          </div>
+          <div class="print-barcode-value">${item.barcodeValue}</div>
+          <div class="print-barcode-type">CODE 128</div>
+          <div class="print-barcode-info">
+            <p><strong>ID:</strong> ${item.id}</p>
+            <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+          </div>
+        </div>
+      `;
+    });
+    
+    barcodeHTML += '</div>';
+    printContainer.innerHTML = barcodeHTML;
+
+    // Add print styles (reuse the same styles from printBarcode)
+    const printStyles = document.createElement('style');
+    printStyles.id = 'print-barcode-styles';
+    printStyles.textContent = `
+      @media screen {
+        #print-barcode-container {
+          position: fixed;
+          top: -9999px;
+          left: -9999px;
+          visibility: hidden;
+        }
+      }
+      @media print {
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+        body * {
+          visibility: hidden;
+        }
+        #print-barcode-container,
+        #print-barcode-container * {
+          visibility: visible;
+        }
+        #print-barcode-container {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 100%;
+          height: 100%;
+          background: white;
+          padding: 20px;
+        }
+        .print-all-barcodes-wrapper {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 20px;
+          max-width: 100%;
+        }
+        .print-barcode-item {
+          text-align: center;
+          padding: 20px;
+          border: 2px solid #000;
+          border-radius: 8px;
+          background: white;
+          page-break-inside: avoid;
+        }
+        .print-marble-name {
+          font-size: 20px;
+          font-weight: bold;
+          margin-bottom: 15px;
+          color: #000;
+        }
+        .print-barcode-visual {
+          margin: 20px 0;
+          padding: 15px;
+          background: white;
+        }
+        [id^="print-barcode-svg-"] {
+          width: 100%;
+          height: 60px;
+          max-width: 350px;
+          display: block;
+          margin: 0 auto;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+          color-adjust: exact;
+        }
+        .print-barcode-value {
+          font-family: 'Courier New', monospace;
+          font-size: 20px;
+          font-weight: bold;
+          letter-spacing: 1px;
+          margin: 15px 0 5px 0;
+          color: #000;
+        }
+        .print-barcode-type {
+          font-size: 10px;
+          color: #666;
+          margin-bottom: 15px;
+        }
+        .print-barcode-info {
+          margin-top: 15px;
+          font-size: 12px;
+          color: #333;
+        }
+        .print-barcode-info p {
+          margin: 3px 0;
+        }
+      }
+    `;
+
+    // Add to document
+    document.head.appendChild(printStyles);
+    document.body.appendChild(printContainer);
+
+    // Generate barcodes for all items
+    barcodes.forEach((barcodeItem, index) => {
+      const printSvg = document.getElementById(`print-barcode-svg-${index}`) as unknown as SVGSVGElement;
+      if (printSvg) {
+        try {
+          JsBarcode(printSvg, barcodeItem.barcodeValue, {
+            format: "CODE128",
+            width: 2,
+            height: 60,
+            displayValue: false,
+            background: "#ffffff",
+            lineColor: "#000000",
+            margin: 10
+          });
+        } catch (error) {
+          console.error(`Error generating barcode ${index}:`, error);
+        }
+      }
+    });
+
+    // Trigger print dialog
+    setTimeout(() => {
+      window.print();
+    }, 200);
+
+    // Clean up after printing
+    const cleanup = () => {
+      if (printContainer.parentNode) {
+        printContainer.parentNode.removeChild(printContainer);
+      }
+      if (printStyles.parentNode) {
+        printStyles.parentNode.removeChild(printStyles);
+      }
+    };
+
+    // Clean up when print dialog is closed
+    window.addEventListener('afterprint', cleanup, { once: true });
+  };
+
+  const handlePrintAll = (barcodes: BarcodeItem[], marbleType: string) => {
+    printAllBarcodes(barcodes, marbleType);
   };
 
   const handlePrintBarcode = (item: BarcodeItem) => {
@@ -485,13 +737,13 @@ export function BarcodeManagement() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                         Marble Name
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Barcode Value
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Shades Available
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                         Last Printed
                       </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                         Actions
                       </th>
                     </tr>
@@ -503,63 +755,191 @@ export function BarcodeManagement() {
                           Loading barcodes...
                         </td>
                       </tr>
-                    ) : filteredBarcodes.length === 0 ? (
+                    ) : totalGroups === 0 ? (
                       <tr>
                         <td colSpan={4} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
                           No barcodes found
                         </td>
                       </tr>
                     ) : (
-                      filteredBarcodes.map((item) => (
-                      <tr
-                        key={item.id}
-                        className={`hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer ${
-                          selectedBarcode?.id === item.id ? 'bg-blue-50 dark:bg-gray-800' : ''
-                        }`}
-                        onClick={() => setSelectedBarcode(item)}
-                      >
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900 dark:text-white">{item.marbleType}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <Barcode className="w-4 h-4 text-gray-400" />
-                            <span className="text-sm font-mono text-gray-900 dark:text-white">{item.barcodeValue}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
-                          {item.lastPrinted}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedBarcode(item);
-                              }}
-                              className="p-2 text-[#2563EB] hover:bg-blue-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                              title="View Barcode"
+                      paginatedGroups.map((group) => {
+                        const isExpanded = expandedMarble === group.marbleType;
+                        const latestPrinted = group.latestPrinted || '-';
+                        // Extract and sort shades from barcodes (use color field from database)
+                        const shades = group.barcodes
+                          .map(b => extractShade(b))
+                          .filter(shade => shade)
+                          .sort();
+                        const shadesDisplay = shades.join(', ') || '-';
+
+                        return (
+                          <>
+                            <tr
+                              key={group.marbleType}
+                              className={`hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer ${
+                                isExpanded ? 'bg-blue-50 dark:bg-gray-800' : ''
+                              }`}
+                              onClick={() => handleToggleExpand(group.marbleType, group.barcodes[0])}
                             >
-                              <Eye className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handlePrintBarcode(item);
-                              }}
-                              className="p-2 text-[#16A34A] hover:bg-green-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                              title="Print Barcode"
-                            >
-                              <Printer className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                      ))
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleToggleExpand(group.marbleType, group.barcodes[0]);
+                                    }}
+                                    className="p-1 rounded-full border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                    aria-label={isExpanded ? 'Collapse' : 'Expand'}
+                                  >
+                                    <ChevronDown
+                                      className={`w-4 h-4 transition-transform ${
+                                        isExpanded ? 'rotate-180' : ''
+                                      }`}
+                                    />
+                                  </button>
+                                  <div className="text-sm font-medium text-gray-900 dark:text-white">
+                                    {group.marbleType}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm text-gray-600 dark:text-gray-400">
+                                  {shadesDisplay}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
+                                {latestPrinted}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-right">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handlePrintAll(group.barcodes, group.marbleType);
+                                  }}
+                                  className="px-4 py-2 bg-[#2563EB] dark:bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-[#1E40AF] dark:hover:bg-blue-700 transition-colors flex items-center gap-2"
+                                  title="Print All Barcodes"
+                                >
+                                  <Printer className="w-4 h-4" />
+                                  Print All
+                                </button>
+                              </td>
+                            </tr>
+                            {isExpanded && (
+                              <>
+                                {group.barcodes.map((barcode) => {
+                                  const shade = extractShade(barcode);
+                                  return (
+                                    <tr
+                                      key={barcode.id}
+                                      className="bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedBarcode(barcode);
+                                      }}
+                                    >
+                                      <td className="px-6 py-3 pl-12">
+                                        <div className="flex items-center gap-2">
+                                          <Barcode className="w-3 h-3 text-gray-400" />
+                                          <span className="text-xs font-mono text-gray-600 dark:text-gray-300">
+                                            {barcode.barcodeValue}
+                                          </span>
+                                        </div>
+                                      </td>
+                                      <td className="px-6 py-3 whitespace-nowrap">
+                                        <div className="text-xs font-medium text-gray-700 dark:text-gray-200">
+                                          {shade}
+                                        </div>
+                                      </td>
+                                      <td className="px-6 py-3 whitespace-nowrap text-xs text-gray-600 dark:text-gray-400">
+                                        {barcode.lastPrinted || '-'}
+                                      </td>
+                                      <td className="px-6 py-3 whitespace-nowrap text-right">
+                                        <div className="flex items-center justify-end gap-2">
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setSelectedBarcode(barcode);
+                                            }}
+                                            className="p-1.5 text-[#2563EB] hover:bg-blue-50 dark:hover:bg-gray-700 rounded transition-colors"
+                                            title="View Barcode"
+                                          >
+                                            <Eye className="w-3 h-3" />
+                                          </button>
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handlePrintBarcode(barcode);
+                                            }}
+                                            className="p-1.5 text-[#16A34A] hover:bg-green-50 dark:hover:bg-gray-700 rounded transition-colors"
+                                            title="Print Barcode"
+                                          >
+                                            <Printer className="w-3 h-3" />
+                                          </button>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </>
+                            )}
+                          </>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
               </div>
+
+              {/* Pagination */}
+              {!loading && totalGroups > 0 && (
+                <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-800 flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-gray-600 dark:text-gray-400">
+                  <div>
+                    Showing{' '}
+                    <span className="font-semibold">
+                      {startIndex + 1} - {Math.min(startIndex + pageSize, totalGroups)}
+                    </span>{' '}
+                    of <span className="font-semibold">{totalGroups}</span> marble types
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <span>Rows per page:</span>
+                      <select
+                        value={pageSize}
+                        onChange={(e) => {
+                          setPageSize(Number(e.target.value));
+                          setPage(1);
+                        }}
+                        className="border border-gray-300 dark:border-gray-700 rounded-md px-2 py-1 bg-white dark:bg-gray-900 text-xs focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
+                      >
+                        <option value={5}>5</option>
+                        <option value={10}>10</option>
+                        <option value={20}>20</option>
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        className="px-2 py-1 rounded-md border border-gray-300 dark:border-gray-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800"
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        disabled={currentPage <= 1}
+                      >
+                        Prev
+                      </button>
+                      <span className="px-2">
+                        Page <span className="font-semibold">{currentPage}</span> of{' '}
+                        <span className="font-semibold">{totalPages}</span>
+                      </span>
+                      <button
+                        className="px-2 py-1 rounded-md border border-gray-300 dark:border-gray-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800"
+                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                        disabled={currentPage >= totalPages}
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
