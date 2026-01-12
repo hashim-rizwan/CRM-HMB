@@ -199,6 +199,56 @@ export const authAPI = {
     }),
 };
 
+// Transactions API
+export const transactionsAPI = {
+  getAll: (filters?: {
+    search?: string;
+    type?: 'IN' | 'OUT' | 'all';
+    marbleType?: string;
+    requestedBy?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+    page?: number;
+    limit?: number;
+  }) => {
+    const params = new URLSearchParams();
+    if (filters?.search) params.append('search', filters.search);
+    if (filters?.type && filters.type !== 'all') params.append('type', filters.type);
+    if (filters?.marbleType && filters.marbleType !== 'all') params.append('marbleType', filters.marbleType);
+    if (filters?.requestedBy && filters.requestedBy !== 'all') params.append('requestedBy', filters.requestedBy);
+    if (filters?.dateFrom) params.append('dateFrom', filters.dateFrom);
+    if (filters?.dateTo) params.append('dateTo', filters.dateTo);
+    if (filters?.sortBy) params.append('sortBy', filters.sortBy);
+    if (filters?.sortOrder) params.append('sortOrder', filters.sortOrder);
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+    
+    const query = params.toString();
+    return apiRequest<{
+      success: boolean;
+      transactions: any[];
+      filters: {
+        marbleTypes: string[];
+        users: string[];
+      };
+      pagination: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+        hasNextPage: boolean;
+        hasPrevPage: boolean;
+      };
+      stats?: {
+        totalAdded: number;
+        totalRemoved: number;
+      };
+    }>(`/transactions${query ? `?${query}` : ''}`);
+  },
+};
+
 // Barcodes API
 export const barcodeAPI = {
   getAll: (search?: string) => {
