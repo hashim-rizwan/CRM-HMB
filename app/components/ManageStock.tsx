@@ -20,13 +20,10 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
   
   const [addFormData, setAddFormData] = useState({
     marbleType: '',
-    quantity: '',
-    unit: 'square feet',
-    location: '',
-    supplier: '',
-    batchNumber: '',
-    costPrice: '',
-    salePrice: '',
+    shade: '',
+    slabSizeLength: '',
+    slabSizeWidth: '',
+    numberOfSlabs: '',
     notes: '',
   });
 
@@ -40,11 +37,15 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
 
   const [newItemFormData, setNewItemFormData] = useState({
     marbleType: '',
-    supplier: '',
-    batchNumber: '',
     costPrice: '',
     salePrice: '',
     notes: '',
+    shades: {
+      AA: false,
+      A: false,
+      B: false,
+      'B-': false,
+    },
   });
   const [generatedBarcode, setGeneratedBarcode] = useState<string>('');
 
@@ -55,32 +56,38 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
     setSuccessMessage(null);
 
     try {
+      // Calculate quantity from slab size and number of slabs
+      const length = parseFloat(addFormData.slabSizeLength);
+      const width = parseFloat(addFormData.slabSizeWidth);
+      const numberOfSlabs = parseFloat(addFormData.numberOfSlabs);
+      
+      if (!length || !width || !numberOfSlabs) {
+        throw new Error('Please enter valid slab size and number of slabs');
+      }
+      
+      // Calculate total square feet: length (ft) × width (ft) × number of slabs
+      const totalSquareFeet = length * width * numberOfSlabs;
+      
       const response = await stockAPI.add({
         marbleType: addFormData.marbleType,
-        color: '', // Color will be derived from marble type in API
-        quantity: parseFloat(addFormData.quantity),
-        unit: addFormData.unit,
-        location: addFormData.location,
-        supplier: addFormData.supplier || undefined,
-        batchNumber: addFormData.batchNumber || undefined, // API will auto-generate if not provided
-        costPrice: addFormData.costPrice ? parseFloat(addFormData.costPrice) : undefined,
-        salePrice: addFormData.salePrice ? parseFloat(addFormData.salePrice) : undefined,
-        notes: addFormData.notes || undefined,
+        color: addFormData.shade, // Use shade as color
+        quantity: totalSquareFeet,
+        unit: 'square feet',
+        location: 'N/A', // Default location
+        supplier: undefined,
+        batchNumber: undefined, // No batch number, using shade instead
+        costPrice: undefined,
+        salePrice: undefined,
+        notes: addFormData.notes || `Slab Size: ${length}x${width}, Number of Slabs: ${numberOfSlabs}`,
         barcode: scannedBarcode || undefined,
       });
 
-      // Update batch number from API response if provided
-      const finalBatchNumber = response.batchNumber || addFormData.batchNumber;
-
       setAddFormData({
         marbleType: '',
-        quantity: '',
-        unit: 'square feet',
-        location: '',
-        supplier: '',
-        batchNumber: '',
-        costPrice: '',
-        salePrice: '',
+        shade: '',
+        slabSizeLength: '',
+        slabSizeWidth: '',
+        numberOfSlabs: '',
         notes: '',
       });
       setScannedBarcode('');
@@ -89,7 +96,7 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
       const inventoryResponse = await inventoryAPI.getAll();
       setInventory(inventoryResponse.marbles || []);
       
-      setSuccessMessage(`Stock added successfully!${finalBatchNumber ? ` Batch: ${finalBatchNumber}` : ''}`);
+      setSuccessMessage(`Stock added successfully! Shade: ${addFormData.shade}, Total: ${totalSquareFeet.toLocaleString()} sq ft`);
       setTimeout(() => setSuccessMessage(null), 5000);
     } catch (err: any) {
       setError(err.message || 'Failed to add stock');
@@ -134,38 +141,11 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
     }
   };
 
-  // Generate batch number based on marble type
-  const generateBatchNumber = (marbleType: string): string => {
-    if (!marbleType || marbleType.trim() === '') return '';
-    
-    // Get count of existing batches for this marble type
-    const existingBatches = inventory.filter(
-      (marble: any) => 
-        marble.marbleType === marbleType && 
-        marble.batchNumber && 
-        marble.batchNumber.trim() !== ''
-    );
-    
-    const prefix = marbleType
-      .replace(/\s+/g, '')
-      .toUpperCase()
-      .slice(0, 4) || 'HMB';
-    
-    return `${prefix}-B${existingBatches.length + 1}`;
-  };
-
   const handleAddChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const newData = {
+    setAddFormData({
       ...addFormData,
       [e.target.name]: e.target.value,
-    };
-    
-    // Auto-generate batch number when marble type changes
-    if (e.target.name === 'marbleType' && e.target.value.trim() !== '') {
-      newData.batchNumber = generateBatchNumber(e.target.value);
-    }
-    
-    setAddFormData(newData);
+    });
   };
 
   const handleRemoveChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -176,10 +156,21 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
   };
 
   const handleNewItemChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setNewItemFormData({
-      ...newItemFormData,
-      [e.target.name]: e.target.value,
-    });
+    if (e.target.type === 'checkbox') {
+      const checkbox = e.target as HTMLInputElement;
+      setNewItemFormData({
+        ...newItemFormData,
+        shades: {
+          ...newItemFormData.shades,
+          [checkbox.name]: checkbox.checked,
+        },
+      });
+    } else {
+      setNewItemFormData({
+        ...newItemFormData,
+        [e.target.name]: e.target.value,
+      });
+    }
   };
 
   const handleNewItemSubmit = async (e: React.FormEvent) => {
@@ -189,30 +180,45 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
     setSuccessMessage(null);
 
     try {
+      // Get selected shades
+      const selectedShades = Object.entries(newItemFormData.shades)
+        .filter(([_, isSelected]) => isSelected)
+        .map(([shade, _]) => shade);
+
+      if (selectedShades.length === 0) {
+        setError('Please select at least one shade');
+        setLoading(false);
+        return;
+      }
+
       const response = await marblesAPI.create({
         marbleType: newItemFormData.marbleType,
-        supplier: newItemFormData.supplier || undefined,
-        batchNumber: newItemFormData.batchNumber || undefined,
         costPrice: newItemFormData.costPrice ? parseFloat(newItemFormData.costPrice) : undefined,
         salePrice: newItemFormData.salePrice ? parseFloat(newItemFormData.salePrice) : undefined,
         notes: newItemFormData.notes || undefined,
+        shades: selectedShades,
       });
       
-      // Store the generated barcode from response
-      if (response.marble?.barcode) {
-        setGeneratedBarcode(response.marble.barcode);
-        setSuccessMessage(`New marble type created successfully! Barcode: ${response.marble.barcode}. You can now use "Add Stock" to add inventory for this marble type.`);
+      // Store the generated barcodes from response
+      if (response.marbles && response.marbles.length > 0) {
+        const barcodes = response.marbles.map((m: any) => `${m.color}: ${m.barcode}`).join(', ');
+        setGeneratedBarcode(barcodes);
+        setSuccessMessage(`New marble type created successfully! ${response.marbles.length} shade${response.marbles.length > 1 ? 's' : ''} added with barcodes. You can now use "Add Stock" to add inventory.`);
       } else {
-        setSuccessMessage('New marble type created successfully!');
+        setSuccessMessage('New marble type created successfully! You can now use "Add Stock" to add inventory for this marble type.');
       }
 
       setNewItemFormData({
         marbleType: '',
-        supplier: '',
-        batchNumber: '',
         costPrice: '',
         salePrice: '',
         notes: '',
+        shades: {
+          AA: false,
+          A: false,
+          B: false,
+          'B-': false,
+        },
       });
       
       // Refresh inventory data after adding new item
@@ -335,16 +341,10 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
         
         if (activeTab === 'add') {
           // Auto-populate Add Stock form
-          const newBatchNumber = generateBatchNumber(marble.marbleType);
           setAddFormData({
             ...addFormData,
             marbleType: marble.marbleType,
-            unit: marble.unit,
-            location: marble.location,
-            supplier: marble.supplier || '',
-            batchNumber: newBatchNumber, // Auto-generate new batch number
-            costPrice: marble.costPrice?.toString() || '',
-            salePrice: marble.salePrice?.toString() || '',
+            shade: marble.color || '', // Use color field for shade
           });
           setSuccessMessage(`Barcode scanned: ${barcode}. Marble: ${marble.marbleType} - ${marble.color}`);
           setTimeout(() => setSuccessMessage(null), 5000);
@@ -437,6 +437,7 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
               )}
             </button>
             
+            {userRole === 'Admin' && (
             <button
               onClick={() => setActiveTab('new-item')}
               className={`px-6 py-3 font-medium transition-colors relative ${
@@ -453,15 +454,16 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#2563EB]"></div>
               )}
             </button>
+            )}
           </div>
         </div>
 
-        {/* Add New Item Form */}
-        {activeTab === 'new-item' && (
+        {/* Add New Item Form - Admin Only */}
+        {activeTab === 'new-item' && userRole === 'Admin' && (
           <form onSubmit={handleNewItemSubmit} className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-8">
             <div className="mb-6">
               <h4 className="text-lg font-semibold text-[#1F2937] dark:text-white mb-2">Add New Marble Type</h4>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Create a new marble type with generic information. Stock can be added later using "Add Stock".</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Create a new marble type with pricing information. Stock can be added later using "Add Stock".</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -481,41 +483,10 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
                 />
               </div>
 
-              {/* Supplier */}
+              {/* Cost Price */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Supplier
-                </label>
-                <input
-                  type="text"
-                  name="supplier"
-                  value={newItemFormData.supplier}
-                  onChange={handleNewItemChange}
-                  placeholder="Supplier name"
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
-                />
-              </div>
-
-              {/* Batch Number */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Batch Number
-                </label>
-                <input
-                  type="text"
-                  name="batchNumber"
-                  value={newItemFormData.batchNumber}
-                  onChange={handleNewItemChange}
-                  placeholder="e.g., BATCH-2026-001"
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
-                />
-              </div>
-
-              {/* Cost Price - Admin only */}
-              {userRole === 'Admin' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Cost Price
+                  Cost Price / sq ft
                 </label>
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400">
@@ -531,13 +502,11 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
                   />
                 </div>
               </div>
-              )}
 
-              {/* Sale Price - Admin only */}
-              {userRole === 'Admin' && (
+              {/* Sale Price */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Sale Price
+                  Sale Price / sq ft
                 </label>
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400">
@@ -553,7 +522,32 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
                   />
                 </div>
               </div>
-              )}
+
+              {/* Shades */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Shades
+                </label>
+                <div className="grid grid-cols-4 gap-2">
+                  {['AA', 'A', 'B', 'B-'].map((shade) => (
+                    <label
+                      key={shade}
+                      className="flex items-center gap-1.5 p-1.5 border border-gray-300 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        name={shade}
+                        checked={newItemFormData.shades[shade as keyof typeof newItemFormData.shades]}
+                        onChange={handleNewItemChange}
+                        className="w-3 h-3 text-[#2563EB] border-gray-300 rounded focus:ring-1 focus:ring-[#2563EB] dark:bg-gray-800 dark:border-gray-600"
+                      />
+                      <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                        {shade}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {/* Notes */}
@@ -571,18 +565,22 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
               />
             </div>
 
-            {/* Generated Barcode Display */}
+            {/* Generated Barcodes Display */}
             {generatedBarcode && (
               <div className="mb-6">
                 <div className="bg-[#D1FAE5] dark:bg-green-900 border border-[#16A34A] dark:border-green-700 rounded-lg p-4">
-                  <p className="text-sm font-medium text-[#065F46] dark:text-green-300 mb-1">
-                    ✓ Barcode Generated Successfully
+                  <p className="text-sm font-medium text-[#065F46] dark:text-green-300 mb-2">
+                    ✓ Barcodes Generated Successfully
                   </p>
-                  <p className="text-lg font-semibold text-[#065F46] dark:text-green-200">
-                    {generatedBarcode}
-                  </p>
-                  <p className="text-xs text-[#065F46] dark:text-green-400 mt-1">
-                    This barcode can be scanned to quickly add or remove stock for this marble type
+                  <div className="space-y-1">
+                    {generatedBarcode.split(', ').map((barcodeInfo, index) => (
+                      <p key={index} className="text-sm font-semibold text-[#065F46] dark:text-green-200">
+                        {barcodeInfo}
+                      </p>
+                    ))}
+                  </div>
+                  <p className="text-xs text-[#065F46] dark:text-green-400 mt-2">
+                    Each barcode identifies the marble type and shade. Use these barcodes to quickly add or remove stock.
                   </p>
                 </div>
               </div>
@@ -595,11 +593,15 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
                  onClick={() => {
                    setNewItemFormData({
                      marbleType: '',
-                     supplier: '',
-                     batchNumber: '',
                      costPrice: '',
                      salePrice: '',
                      notes: '',
+                     shades: {
+                       AA: false,
+                       A: false,
+                       B: false,
+                       'B-': false,
+                     },
                    });
                    setGeneratedBarcode('');
                  }}
@@ -664,140 +666,84 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
                 </p>
               </div>
 
-              {/* Quantity */}
+              {/* Shade */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Quantity <span className="text-[#DC2626]">*</span>
-                </label>
-                <input
-                  type="number"
-                  name="quantity"
-                  value={addFormData.quantity}
-                  onChange={handleAddChange}
-                  required
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
-                />
-              </div>
-
-              {/* Unit */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Unit <span className="text-[#DC2626]">*</span>
+                  Shade <span className="text-[#DC2626]">*</span>
                 </label>
                 <select
-                  name="unit"
-                  value={addFormData.unit}
+                  name="shade"
+                  value={addFormData.shade}
                   onChange={handleAddChange}
                   required
                   className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
                 >
-                  <option value="square feet">Square Feet (sq ft)</option>
-                  <option value="sqm">Square Meters (m²)</option>
-                  <option value="kg">Kilograms (kg)</option>
-                  <option value="ton">Tons</option>
-                  <option value="pcs">Pieces</option>
+                  <option value="">Select shade</option>
+                  <option value="AA">AA</option>
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                  <option value="B-">B-</option>
                 </select>
-              </div>
-
-              {/* Location */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Storage Location <span className="text-[#DC2626]">*</span>
-                </label>
-                <select
-                  name="location"
-                  value={addFormData.location}
-                  onChange={handleAddChange}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
-                >
-                  <option value="">Select location</option>
-                  {locations.map((loc) => (
-                    <option key={loc} value={loc}>{loc}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Supplier */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Supplier
-                </label>
-                <input
-                  type="text"
-                  name="supplier"
-                  value={addFormData.supplier}
-                  onChange={handleAddChange}
-                  placeholder="Supplier name"
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
-                />
-              </div>
-
-              {/* Batch Number */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Batch Number <span className="text-xs text-gray-500 dark:text-gray-400">(Auto-generated)</span>
-                </label>
-                <input
-                  type="text"
-                  name="batchNumber"
-                  value={addFormData.batchNumber}
-                  readOnly
-                  disabled
-                  placeholder="Will be auto-generated"
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 cursor-not-allowed"
-                />
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Batch number is automatically generated when you select a marble type
+                  Marble stock will be categorized by shade
                 </p>
               </div>
 
-              {/* Cost Price - Admin only */}
-              {userRole === 'Admin' && (
+              {/* Slab Size */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Cost Price
+                  Slab Size (ft) <span className="text-[#DC2626]">*</span>
                 </label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400">
-                    PKR
-                  </span>
+                <div className="flex items-center gap-3">
                   <input
                     type="number"
-                    name="costPrice"
-                    value={addFormData.costPrice}
+                    name="slabSizeLength"
+                    value={addFormData.slabSizeLength}
                     onChange={handleAddChange}
-                    placeholder="e.g., 100.00"
-                    className="w-full pl-12 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+                    required
+                    min="0"
+                    step="0.01"
+                    placeholder="Length"
+                    className="flex-1 min-w-0 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+                  />
+                  <span className="text-gray-500 dark:text-gray-400 flex-shrink-0">×</span>
+                  <input
+                    type="number"
+                    name="slabSizeWidth"
+                    value={addFormData.slabSizeWidth}
+                    onChange={handleAddChange}
+                    required
+                    min="0"
+                    step="0.01"
+                    placeholder="Width"
+                    className="flex-1 min-w-0 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
                   />
                 </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Enter length and width in feet
+                </p>
               </div>
-              )}
 
-              {/* Sale Price - Admin only */}
-              {userRole === 'Admin' && (
+              {/* Number of Slabs */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Sale Price
+                  Number of Slabs <span className="text-[#DC2626]">*</span>
                 </label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400">
-                    PKR
-                  </span>
-                  <input
-                    type="number"
-                    name="salePrice"
-                    value={addFormData.salePrice}
-                    onChange={handleAddChange}
-                    placeholder="e.g., 150.00"
-                    className="w-full pl-12 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
-                  />
-                </div>
+                <input
+                  type="number"
+                  name="numberOfSlabs"
+                  value={addFormData.numberOfSlabs}
+                  onChange={handleAddChange}
+                  required
+                  min="1"
+                  step="1"
+                  placeholder="e.g., 10"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Total quantity will be calculated: Length × Width × Number of Slabs
+                </p>
               </div>
-              )}
             </div>
 
             {/* Notes */}
@@ -821,15 +767,12 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
                 type="button"
                  onClick={() => setAddFormData({
                    marbleType: '',
-                   quantity: '',
-                  unit: 'square feet',
-                  location: '',
-                  supplier: '',
-                  batchNumber: '',
-                  costPrice: '',
-                  salePrice: '',
-                  notes: '',
-                })}
+                   shade: '',
+                   slabSizeLength: '',
+                   slabSizeWidth: '',
+                   numberOfSlabs: '',
+                   notes: '',
+                 })}
                 className="px-6 py-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
               >
                 Reset
@@ -854,19 +797,35 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
                 <div className="space-y-4">
                   <div className="pb-4 border-b border-gray-200 dark:border-gray-800">
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Selected Item</p>
-                     <p className="font-medium text-[#1F2937] dark:text-white">
-                       {addFormData.marbleType || 'None selected'}
-                     </p>
+                    <p className="font-medium text-[#1F2937] dark:text-white">
+                      {addFormData.marbleType || 'None selected'}
+                    </p>
+                    {addFormData.shade && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Shade: {addFormData.shade}
+                      </p>
+                    )}
                   </div>
 
                   <div className="pb-4 border-b border-gray-200 dark:border-gray-800">
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Current Stock</p>
                     <p className="font-medium text-[#1F2937] dark:text-white">
                       {(() => {
+                        if (!addFormData.marbleType) return '-';
+                        // Find stock for this marble type and shade combination
+                        const matchingStock = inventory.find((marble: any) => 
+                          marble.marbleType === addFormData.marbleType && 
+                          marble.color === addFormData.shade &&
+                          marble.batchNumber === null // Only actual stock entries, not templates
+                        );
+                        if (matchingStock) {
+                          return `${matchingStock.quantity.toLocaleString()} ${matchingStock.unit || 'sq ft'}`;
+                        }
+                        // Fallback to total stock for marble type if shade not selected or not found
                         const currentStock = availableStock.find(s => s.type === addFormData.marbleType);
                         return currentStock 
                           ? `${currentStock.available.toLocaleString()} ${currentStock.unit}`
-                          : '-';
+                          : '0 sq ft';
                       })()}
                     </p>
                   </div>
@@ -874,32 +833,70 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
                   <div className="pb-4 border-b border-gray-200 dark:border-gray-800">
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Adding</p>
                     <p className="font-medium text-[#16A34A] dark:text-green-400">
-                      {addFormData.quantity 
-                        ? `${parseFloat(addFormData.quantity).toLocaleString()} ${addFormData.unit || 'square feet'}`
-                        : '-'
-                      }
+                      {(() => {
+                        const length = parseFloat(addFormData.slabSizeLength);
+                        const width = parseFloat(addFormData.slabSizeWidth);
+                        const numberOfSlabs = parseFloat(addFormData.numberOfSlabs);
+                        if (length && width && numberOfSlabs) {
+                          const totalSqFt = length * width * numberOfSlabs;
+                          return `${totalSqFt.toLocaleString()} sq ft`;
+                        }
+                        return '-';
+                      })()}
                     </p>
+                    {addFormData.shade && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Shade: {addFormData.shade}
+                      </p>
+                    )}
                   </div>
 
                   <div>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">New Total</p>
                     <p className="font-semibold text-[#1F2937] dark:text-white">
                       {(() => {
+                        const length = parseFloat(addFormData.slabSizeLength);
+                        const width = parseFloat(addFormData.slabSizeWidth);
+                        const numberOfSlabs = parseFloat(addFormData.numberOfSlabs);
+                        
+                        if (!length || !width || !numberOfSlabs) return '-';
+                        
+                        const adding = length * width * numberOfSlabs;
+                        
+                        // Find stock for this marble type and shade combination
+                        const matchingStock = inventory.find((marble: any) => 
+                          marble.marbleType === addFormData.marbleType && 
+                          marble.color === addFormData.shade &&
+                          marble.batchNumber === null
+                        );
+                        
+                        if (matchingStock) {
+                          const newTotal = matchingStock.quantity + adding;
+                          return `${newTotal.toLocaleString()} ${matchingStock.unit || 'sq ft'}`;
+                        }
+                        
+                        // Fallback to total stock for marble type
                         const currentStock = availableStock.find(s => s.type === addFormData.marbleType);
-                        if (currentStock && addFormData.quantity) {
-                          const newTotal = currentStock.available + parseFloat(addFormData.quantity);
+                        if (currentStock) {
+                          const newTotal = currentStock.available + adding;
                           return `${newTotal.toLocaleString()} ${currentStock.unit}`;
                         }
-                        return '-';
+                        
+                        // If no existing stock, just show what's being added
+                        return `${adding.toLocaleString()} sq ft`;
                       })()}
                     </p>
                   </div>
                 </div>
 
-                {addFormData.marbleType && addFormData.quantity && (() => {
+                {addFormData.marbleType && addFormData.slabSizeLength && addFormData.slabSizeWidth && addFormData.numberOfSlabs && (() => {
                   const currentStock = availableStock.find(s => s.type === addFormData.marbleType);
                   if (currentStock) {
-                    const newTotal = currentStock.available + parseFloat(addFormData.quantity);
+                    const length = parseFloat(addFormData.slabSizeLength);
+                    const width = parseFloat(addFormData.slabSizeWidth);
+                    const numberOfSlabs = parseFloat(addFormData.numberOfSlabs);
+                    const adding = length * width * numberOfSlabs;
+                    const newTotal = currentStock.available + adding;
                     if (newTotal > 10000) {
                       return (
                         <div className="mt-4 p-3 bg-[#D1FAE5] dark:bg-green-900 border border-[#16A34A] dark:border-green-700 rounded-lg">

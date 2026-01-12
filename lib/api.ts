@@ -72,7 +72,8 @@ export const marblesAPI = {
     salePrice?: number;
     notes?: string;
     barcode?: string;
-  }) => apiRequest<{ success: boolean; marble: any }>('/marbles/create', {
+    shades?: string[];
+  }) => apiRequest<{ success: boolean; marbles: any[] }>('/marbles/create', {
     method: 'POST',
     body: JSON.stringify(data),
   }),

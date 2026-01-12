@@ -109,10 +109,17 @@ export async function POST(request: NextRequest) {
       isNewItem, // Flag to indicate if this is a new item creation
     } = await request.json();
 
-    // Validation
-    if (!marbleType || !quantity || !unit || !location) {
+    // Validation - shade (color) is now required
+    if (!marbleType || !quantity || !unit) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Missing required fields: marbleType, quantity, and unit are required' },
+        { status: 400 }
+      );
+    }
+
+    if (!color || color.trim() === '') {
+      return NextResponse.json(
+        { error: 'Shade is required. Please select a shade (AA, A, B, or B-).' },
         { status: 400 }
       );
     }
@@ -124,38 +131,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // If color is not provided, try to get it from existing marble of same type, or use marble type as default
-    let finalColor = color;
-    if (!finalColor || finalColor.trim() === '') {
-      const existingMarble = await prisma.marble.findFirst({
-        where: { marbleType },
-      });
-      finalColor = existingMarble?.color || marbleType; // Use existing color or marble type as default
-    }
+    // Use color (shade) as the categorization field
+    const finalColor = color.trim();
 
     // Generate barcode if this is a new item and no barcode provided
     let finalBarcode = barcode;
     if (isNewItem && (!finalBarcode || finalBarcode.trim() === '')) {
       finalBarcode = await generateUniqueBarcode();
-    }
-
-    // Always auto-generate a NEW batch number for each stock addition
-    // Ignore any batch number sent from frontend to ensure uniqueness
-    const finalBatchNumber = await generateBatchNumber(marbleType);
-
-    // Check if a batch with this batch number already exists (prevent duplicates)
-    const existingBatchWithNumber = await prisma.marble.findFirst({
-      where: {
-        marbleType,
-        batchNumber: finalBatchNumber,
-      },
-    });
-
-    if (existingBatchWithNumber) {
-      return NextResponse.json(
-        { error: `Batch ${finalBatchNumber} already exists for this marble type. Please try again.` },
-        { status: 400 }
-      );
     }
 
     // Check if there's a template entry (created via "Add New Item" - no batch number)
@@ -172,7 +154,26 @@ export async function POST(request: NextRequest) {
 
     let marble;
 
-    if (templateEntries.length > 0) {
+    // Check if a marble entry with this shade already exists for this marble type
+    const existingShadeEntry = await prisma.marble.findFirst({
+      where: {
+        marbleType,
+        color: finalColor, // Shade is stored in color field
+        batchNumber: { not: null }, // Only check actual stock entries, not templates
+      },
+    });
+
+    if (existingShadeEntry) {
+      // Update existing shade entry by adding to quantity
+      marble = await prisma.marble.update({
+        where: { id: existingShadeEntry.id },
+        data: {
+          quantity: existingShadeEntry.quantity + quantity,
+          notes: notes || existingShadeEntry.notes,
+          updatedAt: new Date(),
+        },
+      });
+    } else if (templateEntries.length > 0) {
       // Use the first (oldest) template entry
       const templateEntry = templateEntries[0];
       
@@ -188,16 +189,16 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      // Convert template entry to first batch
+      // Convert template entry to first shade entry
       marble = await prisma.marble.update({
         where: { id: templateEntry.id },
         data: {
-          color: finalColor,
+          color: finalColor, // Set shade
           quantity: quantity, // Set quantity (was 0)
           unit: unit, // Update unit
-          location: location, // Update location from 'N/A'
+          location: location || 'N/A', // Update location from 'N/A'
           supplier: supplier || templateEntry.supplier,
-          batchNumber: finalBatchNumber, // Assign batch number
+          batchNumber: null, // No batch number, using shade instead
           barcode: finalBarcode || templateEntry.barcode,
           costPrice: costPrice || templateEntry.costPrice,
           salePrice: salePrice || templateEntry.salePrice,
@@ -207,40 +208,22 @@ export async function POST(request: NextRequest) {
         },
       });
     } else {
-      // No template entry exists, create a NEW batch entry
-      // Ensure batch number is always assigned
-      if (!finalBatchNumber || finalBatchNumber.trim() === '') {
-        return NextResponse.json(
-          { error: 'Failed to generate batch number. Please try again.' },
-          { status: 500 }
-        );
-      }
-
+      // No template entry exists, create a NEW shade entry
       marble = await prisma.marble.create({
         data: {
           marbleType,
-          color: finalColor,
+          color: finalColor, // Shade stored in color field
           quantity,
           unit,
-          location,
+          location: location || 'N/A',
           supplier: supplier || null,
-          batchNumber: finalBatchNumber, // New batch number for each addition - REQUIRED
+          batchNumber: null, // No batch number, using shade for categorization
           barcode: finalBarcode || null,
           costPrice: costPrice || null,
           salePrice: salePrice || null,
           notes: notes || null,
           status: 'In Stock',
         },
-      });
-    }
-
-    // Final validation: Ensure the created/updated marble has a batch number
-    if (!marble.batchNumber) {
-      console.error('ERROR: Marble created without batch number!', { marbleId: marble.id, marbleType });
-      // Try to fix it
-      marble = await prisma.marble.update({
-        where: { id: marble.id },
-        data: { batchNumber: finalBatchNumber },
       });
     }
 
@@ -272,7 +255,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ 
       success: true, 
       marble,
-      batchNumber: finalBatchNumber // Return the batch number that was used
+      shade: finalColor // Return the shade that was used
     }, { status: 201 });
   } catch (error: any) {
     console.error('Error adding stock:', error);
