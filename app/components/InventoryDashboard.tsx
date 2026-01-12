@@ -1,58 +1,44 @@
 'use client'
 
 import { useState, useEffect } from 'react';
-import { Package, TrendingUp, AlertTriangle, CheckCircle, ArrowUp, ArrowDown, Eye, EyeOff, ChevronDown, ChevronRight } from 'lucide-react';
+import { Package, TrendingUp, AlertTriangle, Eye, EyeOff, ChevronDown, ChevronRight, Ruler } from 'lucide-react';
 import { inventoryAPI } from '@/lib/api';
 
-interface InventoryItem {
-  id: string;
-  marbleType: string;
-  color: string;
+interface SlabEntry {
+  id: number;
   quantity: number;
-  unit: string;
-  costPrice: number;
-  salePrice: number;
-  status: 'In Stock' | 'Low Stock' | 'Out of Stock';
-  lastUpdated: string;
+  unit: string | null;
+  slabInfo: { length: number; width: number; numberOfSlabs: number } | null;
+  notes: string | null;
 }
 
+interface ShadeData {
+  shade: string;
+  costPrice: number | null;
+  salePrice: number | null;
+  totalQuantity: number;
+  shadeStatus: string;
+  lastUpdated: string;
+  entries: SlabEntry[];
+}
+
+interface MarbleType {
+  id: number;
+  marbleType: string;
+  availableShades: string[];
+  totalQuantity: number;
+  overallStatus: string;
+  lastUpdated: string;
+  shades: ShadeData[];
+}
 
 interface InventoryDashboardProps {
   searchQuery?: string;
   userRole?: 'Admin' | 'Staff';
 }
 
-// Elastic search function - searches across multiple fields
-const elasticSearch = (items: InventoryItem[], query: string): InventoryItem[] => {
-  if (!query.trim()) {
-    return items;
-  }
-
-  const searchTerm = query.toLowerCase().trim();
-  
-  return items.filter((item) => {
-    // Search across multiple fields
-    const searchableFields = [
-      item.id,
-      item.marbleType,
-      item.color,
-      item.status,
-      item.unit,
-      item.costPrice.toString(),
-      item.salePrice.toString(),
-      item.quantity.toString(),
-      item.lastUpdated,
-    ];
-
-    // Check if any field contains the search term (case-insensitive)
-    return searchableFields.some((field) => 
-      field.toLowerCase().includes(searchTerm)
-    );
-  });
-};
-
 export function InventoryDashboard({ searchQuery = '', userRole = 'Staff' }: InventoryDashboardProps) {
-  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [marbleTypes, setMarbleTypes] = useState<MarbleType[]>([]);
   const [stats, setStats] = useState({
     totalItems: 0,
     totalQuantity: 0,
@@ -62,62 +48,28 @@ export function InventoryDashboard({ searchQuery = '', userRole = 'Staff' }: Inv
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<string>('updatedAt');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [hideOutOfStock, setHideOutOfStock] = useState<boolean>(false);
-  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-  const [batchDetailsMap, setBatchDetailsMap] = useState<Record<string, { batches: any[]; loading: boolean; error: string | null }>>({});
+  const [expandedMarbleTypes, setExpandedMarbleTypes] = useState<Set<string>>(new Set());
+  const [expandedShades, setExpandedShades] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchInventory();
     fetchStats();
-  }, [searchQuery, sortBy, sortOrder]);
+  }, [searchQuery]);
 
   const fetchInventory = async () => {
     try {
       setLoading(true);
-      const response = await inventoryAPI.getAll(searchQuery, sortBy, sortOrder);
-      // Transform API data to match InventoryItem interface
-      const transformed = response.marbles.map((marble: any) => ({
-        id: marble.id.toString(),
-        marbleType: marble.marbleType,
-        color: marble.color,
-        quantity: marble.quantity,
-        unit: marble.unit,
-        costPrice: marble.costPrice || 0,
-        salePrice: marble.salePrice || 0,
-        status: marble.status as 'In Stock' | 'Low Stock' | 'Out of Stock',
-        lastUpdated: new Date(marble.updatedAt).toLocaleDateString(),
-      }));
-      setInventory(transformed);
+      setError(null);
+      const response = await inventoryAPI.getGrouped(searchQuery);
+      setMarbleTypes(response.marbleTypes || []);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch inventory');
       console.error('Error fetching inventory:', err);
+      setMarbleTypes([]);
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleSort = (column: string) => {
-    if (sortBy === column) {
-      // Toggle sort order if clicking the same column
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      // Set new column and default to ascending
-      setSortBy(column);
-      setSortOrder('asc');
-    }
-  };
-
-  const getSortIcon = (column: string) => {
-    if (sortBy !== column) {
-      return null;
-    }
-    return sortOrder === 'asc' ? (
-      <ArrowUp className="w-4 h-4 inline-block ml-1" />
-    ) : (
-      <ArrowDown className="w-4 h-4 inline-block ml-1" />
-    );
   };
 
   const fetchStats = async () => {
@@ -129,72 +81,33 @@ export function InventoryDashboard({ searchQuery = '', userRole = 'Staff' }: Inv
     }
   };
 
-  const handleRowClick = async (item: InventoryItem) => {
-    const isExpanded = expandedRows.has(item.marbleType);
-    
-    if (isExpanded) {
-      // Collapse: remove from expanded set
-      const newExpanded = new Set(expandedRows);
-      newExpanded.delete(item.marbleType);
-      setExpandedRows(newExpanded);
+  const handleMarbleTypeClick = (marbleType: string) => {
+    const newExpanded = new Set(expandedMarbleTypes);
+    if (newExpanded.has(marbleType)) {
+      newExpanded.delete(marbleType);
+      // Also collapse all shades for this marble type
+      const newExpandedShades = new Set(expandedShades);
+      marbleTypes.find(mt => mt.marbleType === marbleType)?.shades.forEach(shade => {
+        newExpandedShades.delete(`${marbleType}__${shade.shade}`);
+      });
+      setExpandedShades(newExpandedShades);
     } else {
-      // Expand: add to expanded set and fetch details if not already loaded
-      const newExpanded = new Set(expandedRows);
-      newExpanded.add(item.marbleType);
-      setExpandedRows(newExpanded);
-
-      // Only fetch if we don't already have the data
-      if (!batchDetailsMap[item.marbleType]) {
-        setBatchDetailsMap(prev => ({
-          ...prev,
-          [item.marbleType]: { batches: [], loading: true, error: null }
-        }));
-
-        try {
-          const response = await inventoryAPI.getDetailsByType(item.marbleType);
-          // Use the main row's ID as the consistent ID for all batches
-          const mainRowId = parseInt(item.id);
-          const batchesWithMainId = (response.batches || []).map((batch: any) => ({
-            ...batch,
-            consistentId: mainRowId, // Override with the main inventory row's ID
-          }));
-          setBatchDetailsMap(prev => ({
-            ...prev,
-            [item.marbleType]: { batches: batchesWithMainId, loading: false, error: null }
-          }));
-        } catch (err: any) {
-          console.error('Error fetching batch details:', err);
-          setBatchDetailsMap(prev => ({
-            ...prev,
-            [item.marbleType]: { batches: [], loading: false, error: err.message || 'Failed to load batch details' }
-          }));
-        }
-      }
+      newExpanded.add(marbleType);
     }
+    setExpandedMarbleTypes(newExpanded);
   };
 
-  // Filter inventory based on search query (client-side fallback)
-  let filteredInventory = elasticSearch(inventory, searchQuery);
-  
-  // Filter out "Out of Stock" items if hideOutOfStock is true
-  if (hideOutOfStock) {
-    filteredInventory = filteredInventory.filter(item => item.status !== 'Out of Stock');
-  }
-  
-  const totalItems = stats.totalItems || filteredInventory.length;
-  const totalQuantity = stats.totalQuantity || filteredInventory.reduce((sum, item) => sum + item.quantity, 0);
-  const lowStockCount = stats.lowStockCount || filteredInventory.filter(item => item.status === 'Low Stock').length;
-  const outOfStockCount = stats.outOfStockCount || filteredInventory.filter(item => item.status === 'Out of Stock').length;
-  const totalInventoryValue = stats.totalInventoryValue || filteredInventory.reduce((sum, item) => sum + (item.quantity * item.costPrice), 0);
-  const potentialRevenue = filteredInventory.reduce((sum, item) => sum + (item.quantity * item.salePrice), 0);
-
-  const summaryCards = [
-    { title: 'Total Items', value: totalItems, icon: Package, color: 'bg-[#2563EB]', change: '+2 this week' },
-    { title: 'Total Stock', value: `${totalQuantity.toLocaleString()} kg`, icon: TrendingUp, color: 'bg-[#16A34A]', change: '+5% from last month' },
-    // Only show Inventory Value for Admin (based on cost price)
-    ...(userRole === 'Admin' ? [{ title: 'Inventory Value', value: `PKR ${totalInventoryValue.toLocaleString()}`, icon: Package, color: 'bg-[#7C3AED]', change: 'At cost price' }] : []),
-    { title: 'Low Stock', value: lowStockCount, icon: AlertTriangle, color: 'bg-[#F59E0B]', change: 'Needs attention' },
-  ];
+  const handleShadeClick = (marbleType: string, shade: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const key = `${marbleType}__${shade}`;
+    const newExpanded = new Set(expandedShades);
+    if (newExpanded.has(key)) {
+      newExpanded.delete(key);
+    } else {
+      newExpanded.add(key);
+    }
+    setExpandedShades(newExpanded);
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -204,6 +117,52 @@ export function InventoryDashboard({ searchQuery = '', userRole = 'Staff' }: Inv
       default: return 'bg-gray-500 text-white';
     }
   };
+
+  // Filter out of stock items if needed
+  let filteredMarbleTypes = marbleTypes;
+  if (hideOutOfStock) {
+    filteredMarbleTypes = marbleTypes.filter(mt => mt.overallStatus !== 'Out of Stock');
+  }
+
+  // Calculate stats from filtered data
+  const totalItems = filteredMarbleTypes.length;
+  const totalQuantity = filteredMarbleTypes.reduce((sum, mt) => sum + mt.totalQuantity, 0);
+  const lowStockCount = filteredMarbleTypes.filter(mt => mt.overallStatus === 'Low Stock').length;
+  const outOfStockCount = filteredMarbleTypes.filter(mt => mt.overallStatus === 'Out of Stock').length;
+  const totalInventoryValue = filteredMarbleTypes.reduce((sum, mt) => {
+    return sum + mt.shades.reduce((shadeSum, shade) => {
+      return shadeSum + shade.entries.reduce((entrySum, entry) => {
+        return entrySum + (entry.quantity * (shade.costPrice || 0));
+      }, 0);
+    }, 0);
+  }, 0);
+
+  const summaryCards = [
+    { title: 'Total Marble Types', value: totalItems, icon: Package, color: 'bg-[#2563EB]', change: `${filteredMarbleTypes.reduce((sum, mt) => sum + mt.shades.length, 0)} total shades` },
+    { title: 'Total Stock', value: `${totalQuantity.toLocaleString()} sq ft`, icon: TrendingUp, color: 'bg-[#16A34A]', change: 'Across all shades' },
+    ...(userRole === 'Admin' ? [{ title: 'Inventory Value', value: `PKR ${totalInventoryValue.toLocaleString()}`, icon: Package, color: 'bg-[#7C3AED]', change: 'At cost price' }] : []),
+    { title: 'Low Stock', value: lowStockCount, icon: AlertTriangle, color: 'bg-[#F59E0B]', change: 'Needs attention' },
+  ];
+
+  if (loading) {
+    return (
+      <div className="p-8 pt-4">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-gray-500 dark:text-gray-400">Loading inventory...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 pt-4">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+          <p className="text-red-800 dark:text-red-200">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8 pt-4">
@@ -253,200 +212,196 @@ export function InventoryDashboard({ searchQuery = '', userRole = 'Staff' }: Inv
         </div>
         
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-8">
-                  {/* Expand/Collapse column */}
-                </th>
-                <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                  onClick={() => handleSort('id')}
-                >
-                  ID {getSortIcon('id')}
-                </th>
-                <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                  onClick={() => handleSort('marbleType')}
-                >
-                  Marble Type {getSortIcon('marbleType')}
-                </th>
-                <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                  onClick={() => handleSort('color')}
-                >
-                  Color {getSortIcon('color')}
-                </th>
-                <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                  onClick={() => handleSort('quantity')}
-                >
-                  Quantity {getSortIcon('quantity')}
-                </th>
-                {userRole === 'Admin' && (
-                <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                  onClick={() => handleSort('costPrice')}
-                >
-                  Cost Price {getSortIcon('costPrice')}
-                </th>
-                )}
-                {userRole === 'Admin' && (
-                <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                  onClick={() => handleSort('salePrice')}
-                >
-                  Sale Price {getSortIcon('salePrice')}
-                </th>
-                )}
-                <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                  onClick={() => handleSort('status')}
-                >
-                  Status {getSortIcon('status')}
-                </th>
-                <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                  onClick={() => handleSort('updatedAt')}
-                >
-                  Last Updated {getSortIcon('updatedAt')}
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
-              {filteredInventory.length === 0 ? (
-                <tr>
-                  <td colSpan={userRole === 'Admin' ? 9 : 8} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
-                    No inventory items found matching "{searchQuery}"
-                  </td>
-                </tr>
+          {filteredMarbleTypes.length === 0 ? (
+            <div className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+              {searchQuery ? (
+                <>No marble types found matching "{searchQuery}"</>
               ) : (
-                filteredInventory.map((item) => {
-                  const isExpanded = expandedRows.has(item.marbleType);
-                  const batchData = batchDetailsMap[item.marbleType];
-                  
-                  return (
-                    <>
-                      <tr
-                        key={item.id}
-                        className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
-                        onClick={() => handleRowClick(item)}
-                      >
-                        <td className="px-2 py-4 whitespace-nowrap">
-                          {isExpanded ? (
-                            <ChevronDown className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-                          ) : (
-                            <ChevronRight className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1F2937] dark:text-white">{item.id}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{item.marbleType}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">{item.color}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{item.quantity.toLocaleString()} {item.unit}</td>
-                        {userRole === 'Admin' && (
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{`PKR ${item.costPrice}/${item.unit}`}</td>
-                        )}
-                        {userRole === 'Admin' && (
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#16A34A] dark:text-green-400">{`PKR ${item.salePrice}/${item.unit}`}</td>
-                        )}
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(item.status)}`}>
-                            {item.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{item.lastUpdated}</td>
-                      </tr>
-                      {/* Expanded Batch Details Row */}
-                      {isExpanded && (
-                        <tr className="bg-gray-50 dark:bg-gray-800/50">
-                          <td colSpan={userRole === 'Admin' ? 9 : 8} className="px-6 py-4">
-                            <div className="pl-8">
-                              <h4 className="text-sm font-semibold text-[#1F2937] dark:text-white mb-3">
-                                Batch Details for {item.marbleType}
-                              </h4>
-                              {batchData?.loading ? (
-                                <div className="text-sm text-gray-600 dark:text-gray-400 py-4">
-                                  Loading batch details...
-                                </div>
-                              ) : batchData?.error ? (
-                                <div className="text-sm text-red-600 dark:text-red-400 py-4">
-                                  {batchData.error}
-                                </div>
-                              ) : !batchData?.batches || batchData.batches.length === 0 ? (
-                                <div className="text-sm text-gray-600 dark:text-gray-400 py-4">
-                                  No batch records found for this marble type.
-                                </div>
-                              ) : (
-                                <div className="overflow-x-auto">
-                                  <table className="w-full text-sm border border-gray-200 dark:border-gray-700 rounded-lg">
-                                    <thead className="bg-gray-100 dark:bg-gray-700">
-                                      <tr>
-                                        <th className="px-4 py-2 text-left font-medium text-gray-700 dark:text-gray-300">ID</th>
-                                        <th className="px-4 py-2 text-left font-medium text-gray-700 dark:text-gray-300">Batch #</th>
-                                        <th className="px-4 py-2 text-left font-medium text-gray-700 dark:text-gray-300">Supplier</th>
-                                        <th className="px-4 py-2 text-left font-medium text-gray-700 dark:text-gray-300">Quantity</th>
-                                        <th className="px-4 py-2 text-left font-medium text-gray-700 dark:text-gray-300">Unit</th>
-                                        {userRole === 'Admin' && (
-                                          <th className="px-4 py-2 text-left font-medium text-gray-700 dark:text-gray-300">Cost Price</th>
-                                        )}
-                                        {userRole === 'Admin' && (
-                                          <th className="px-4 py-2 text-left font-medium text-gray-700 dark:text-gray-300">Sale Price</th>
-                                        )}
-                                        <th className="px-4 py-2 text-left font-medium text-gray-700 dark:text-gray-300">Status</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
-                                      {batchData.batches.map((batch: any) => (
-                                        <tr key={batch.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
-                                          <td className="px-4 py-2 whitespace-nowrap text-gray-700 dark:text-gray-200">
-                                            {batch.consistentId || batch.id}
-                                          </td>
-                                          <td className="px-4 py-2 whitespace-nowrap text-gray-700 dark:text-gray-200">
-                                            {batch.batchNumber || '-'}
-                                          </td>
-                                          <td className="px-4 py-2 whitespace-nowrap text-gray-700 dark:text-gray-200">
-                                            {batch.supplier || '-'}
-                                          </td>
-                                          <td className="px-4 py-2 whitespace-nowrap text-gray-700 dark:text-gray-200">
-                                            {batch.quantity.toLocaleString()}
-                                          </td>
-                                          <td className="px-4 py-2 whitespace-nowrap text-gray-700 dark:text-gray-200">
-                                            {batch.unit}
-                                          </td>
-                                          {userRole === 'Admin' && (
-                                            <td className="px-4 py-2 whitespace-nowrap text-gray-700 dark:text-gray-200">
-                                              {batch.costPrice != null ? `PKR ${batch.costPrice.toLocaleString()}/${batch.unit}` : '-'}
-                                            </td>
-                                          )}
-                                          {userRole === 'Admin' && (
-                                            <td className="px-4 py-2 whitespace-nowrap text-gray-700 dark:text-gray-200">
-                                              {batch.salePrice != null ? `PKR ${batch.salePrice.toLocaleString()}/${batch.unit}` : '-'}
-                                            </td>
-                                          )}
-                                          <td className="px-4 py-2 whitespace-nowrap">
-                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(batch.status)}`}>
-                                              {batch.status}
-                                            </span>
-                                          </td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                </div>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </>
-                  );
-                })
+                <>No inventory items found</>
               )}
-            </tbody>
-          </table>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-200 dark:divide-gray-800">
+              {filteredMarbleTypes.map((marbleType) => {
+                const isMarbleExpanded = expandedMarbleTypes.has(marbleType.marbleType);
+                const lastUpdatedDate = new Date(marbleType.lastUpdated).toLocaleDateString();
+                
+                return (
+                  <div key={marbleType.id} className="transition-colors">
+                    {/* Level 1: Marble Type Table */}
+                    <div className="px-6 py-4">
+                      <table className="w-full">
+                        <thead className="bg-gray-50 dark:bg-gray-800">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-8"></th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">ID</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Marble Type</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Available Shades</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Total Quantity</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Last Updated</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr
+                            className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                            onClick={() => handleMarbleTypeClick(marbleType.marbleType)}
+                          >
+                            <td className="px-4 py-4 whitespace-nowrap">
+                              {isMarbleExpanded ? (
+                                <ChevronDown className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                              ) : (
+                                <ChevronRight className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                              )}
+                            </td>
+                            <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-[#1F2937] dark:text-white">
+                              {marbleType.id}
+                            </td>
+                            <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                              {marbleType.marbleType}
+                            </td>
+                            <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
+                              {marbleType.availableShades.join(', ')}
+                            </td>
+                            <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                              {marbleType.totalQuantity.toLocaleString()} sq ft
+                            </td>
+                            <td className="px-4 py-4 whitespace-nowrap">
+                              <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(marbleType.overallStatus)}`}>
+                                {marbleType.overallStatus}
+                              </span>
+                            </td>
+                            <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                              {lastUpdatedDate}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Level 2: Shades Table (when marble type is expanded) */}
+                    {isMarbleExpanded && (
+                      <div className="bg-gray-50 dark:bg-gray-800/50 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+                        <div className="pl-8 space-y-4">
+                          {marbleType.shades.map((shade) => {
+                            const shadeKey = `${marbleType.marbleType}__${shade.shade}`;
+                            const isShadeExpanded = expandedShades.has(shadeKey);
+                            const shadeLastUpdated = new Date(shade.lastUpdated).toLocaleDateString();
+                            
+                            return (
+                              <div key={shadeKey} className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+                                <table className="w-full">
+                                  <thead className="bg-gray-100 dark:bg-gray-700">
+                                    <tr>
+                                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider w-8"></th>
+                                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Shade</th>
+                                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Total Quantity</th>
+                                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                                      {userRole === 'Admin' && (
+                                        <>
+                                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Cost Price</th>
+                                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Sale Price</th>
+                                        </>
+                                      )}
+                                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Last Updated</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr
+                                      className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                                      onClick={(e) => handleShadeClick(marbleType.marbleType, shade.shade, e)}
+                                    >
+                                      <td className="px-4 py-3 whitespace-nowrap">
+                                        {isShadeExpanded ? (
+                                          <ChevronDown className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                                        ) : (
+                                          <ChevronRight className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                                        )}
+                                      </td>
+                                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
+                                        {shade.shade}
+                                      </td>
+                                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                                        {shade.totalQuantity.toLocaleString()} sq ft
+                                      </td>
+                                      <td className="px-4 py-3 whitespace-nowrap">
+                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(shade.shadeStatus)}`}>
+                                          {shade.shadeStatus}
+                                        </span>
+                                      </td>
+                                      {userRole === 'Admin' && (
+                                        <>
+                                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                                            {shade.costPrice != null ? `PKR ${shade.costPrice.toLocaleString()}/sq ft` : 'N/A'}
+                                          </td>
+                                          <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-[#16A34A] dark:text-green-400">
+                                            {shade.salePrice != null ? `PKR ${shade.salePrice.toLocaleString()}/sq ft` : 'N/A'}
+                                          </td>
+                                        </>
+                                      )}
+                                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                        {shadeLastUpdated}
+                                      </td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+
+                                {/* Level 3: Slab Entries Table (when shade is expanded) */}
+                                {isShadeExpanded && (
+                                  <div className="bg-gray-50 dark:bg-gray-800/50 px-4 pb-4 border-t border-gray-200 dark:border-gray-700">
+                                    <div className="pt-4">
+                                      <table className="w-full">
+                                        <thead className="bg-gray-100 dark:bg-gray-700">
+                                          <tr>
+                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Quantity</th>
+                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Dimensions</th>
+                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Number of Slabs</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
+                                          {shade.entries.map((entry) => (
+                                            <tr key={entry.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                                                {entry.quantity.toLocaleString()} {entry.unit || 'sq ft'}
+                                              </td>
+                                              <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                {entry.slabInfo ? (
+                                                  <span>
+                                                    {entry.slabInfo.length} × {entry.slabInfo.width} ft
+                                                  </span>
+                                                ) : (
+                                                  <span className="text-gray-400 dark:text-gray-500">Not specified</span>
+                                                )}
+                                              </td>
+                                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
+                                                {entry.slabInfo ? (
+                                                  <span>
+                                                    {entry.slabInfo.numberOfSlabs} {entry.slabInfo.numberOfSlabs === 1 ? 'slab' : 'slabs'}
+                                                  </span>
+                                                ) : (
+                                                  <span className="text-gray-400 dark:text-gray-500">-</span>
+                                                )}
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
-

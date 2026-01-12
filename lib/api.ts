@@ -37,7 +37,6 @@ export const stockAPI = {
     color?: string;
     quantity: number;
     unit: string;
-    location: string;
     supplier?: string;
     batchNumber?: string;
     costPrice?: number;
@@ -79,6 +78,37 @@ export const stockAPI = {
     method: 'POST',
     body: JSON.stringify(data),
   }),
+
+  getReserved: (filters?: {
+    search?: string;
+    status?: string;
+    page?: number;
+    limit?: number;
+  }) => {
+    const params = new URLSearchParams();
+    if (filters?.search) params.append('search', filters.search);
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+    const query = params.toString();
+    return apiRequest<{
+      success: boolean;
+      reservedStocks: any[];
+      pagination: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+        hasNextPage: boolean;
+        hasPrevPage: boolean;
+      };
+    }>(`/stock/reserved${query ? `?${query}` : ''}`);
+  },
+
+  releaseReserved: (id: number) =>
+    apiRequest<{ success: boolean; releasedReservation: any }>(`/stock/reserved/${id}/release`, {
+      method: 'POST',
+    }),
 };
 
 // Marbles API - for creating marble types (not stock)
@@ -138,6 +168,38 @@ export const inventoryAPI = {
         shades: string[];
       }>;
     }>('/inventory/marble-types'),
+
+  getGrouped: (search?: string) => {
+    const params = new URLSearchParams();
+    if (search) params.append('search', search);
+    const query = params.toString();
+    return apiRequest<{
+      success: boolean;
+      marbleTypes: Array<{
+        id: number;
+        marbleType: string;
+        availableShades: string[];
+        totalQuantity: number;
+        overallStatus: string;
+        lastUpdated: string;
+        shades: Array<{
+          shade: string;
+          costPrice: number | null;
+          salePrice: number | null;
+          totalQuantity: number;
+          shadeStatus: string;
+          lastUpdated: string;
+          entries: Array<{
+            id: number;
+            quantity: number;
+            unit: string | null;
+            slabInfo: { length: number; width: number; numberOfSlabs: number } | null;
+            notes: string | null;
+          }>;
+        }>;
+      }>;
+    }>(`/inventory/grouped${query ? `?${query}` : ''}`);
+  },
 };
 
 // User Management APIs
