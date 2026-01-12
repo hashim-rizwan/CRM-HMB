@@ -11,7 +11,6 @@ interface Transaction {
   color: string;
   quantity: number;
   unit?: string;
-  batchNumber: string;
   performedBy: string;
   timestamp: string;
   date: string;
@@ -101,7 +100,6 @@ export function TransactionHistory() {
         'Color',
         'Quantity',
         'Unit',
-        'Batch Number',
         'Performed By',
         'Date & Time',
         'Reason',
@@ -118,7 +116,6 @@ export function TransactionHistory() {
             `"${txn.color}"`,
             txn.quantity,
             txn.unit || 'kg',
-            txn.batchNumber,
             `"${txn.performedBy}"`,
             txn.timestamp,
             txn.reason ? `"${txn.reason}"` : '',
@@ -356,9 +353,6 @@ export function TransactionHistory() {
                     Quantity (kg)
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Batch Number
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Performed By
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
@@ -422,11 +416,6 @@ export function TransactionHistory() {
                         >
                           {transaction.type === 'added' ? '+' : '-'}
                           {transaction.quantity} {transaction.unit || 'kg'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-mono text-gray-900 dark:text-white">
-                          {transaction.batchNumber}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">

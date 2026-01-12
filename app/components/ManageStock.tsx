@@ -91,7 +91,6 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
         quantity: totalSquareFeet,
         unit: 'square feet',
         supplier: undefined,
-        batchNumber: undefined, // No batch number, using shade instead
         costPrice: undefined,
         salePrice: undefined,
         notes: addFormData.notes || `Slab Size: ${length}x${width}, Number of Slabs: ${numberOfSlabs}`,

@@ -55,7 +55,6 @@ export async function POST(request: NextRequest) {
               quantity: marbleData.quantity || 0,
               unit: marbleData.unit || 'square feet',
               supplier: marbleData.supplier || null,
-              batchNumber: marbleData.batchNumber || null,
               barcode: marbleData.barcode || null,
               costPrice: marbleData.costPrice || null,
               salePrice: marbleData.salePrice || null,

@@ -75,9 +75,6 @@ export async function GET(request: NextRequest) {
             select: {
               id: true,
               marbleType: true,
-              color: true,
-              batchNumber: true,
-              unit: true,
             },
           },
         },
@@ -87,10 +84,15 @@ export async function GET(request: NextRequest) {
       // Apply search filter
       const searchLower = search.toLowerCase();
       const filtered = allTransactions.filter((txn) => {
+        // Try to extract shade from notes if available
+        const shadeMatch = txn.notes?.match(/shade[:\s]+([AB-]+)/i) || 
+                          txn.notes?.match(/\b(AA|A|B|B-)\b/i);
+        const shade = shadeMatch ? shadeMatch[1] : '';
+        
         return (
           txn.id.toString().includes(search) ||
           txn.marble.marbleType.toLowerCase().includes(searchLower) ||
-          txn.marble.batchNumber?.toLowerCase().includes(searchLower) ||
+          shade.toLowerCase().includes(searchLower) ||
           txn.requestedBy?.toLowerCase().includes(searchLower) ||
           txn.reason?.toLowerCase().includes(searchLower) ||
           txn.notes?.toLowerCase().includes(searchLower)
@@ -112,9 +114,6 @@ export async function GET(request: NextRequest) {
             select: {
               id: true,
               marbleType: true,
-              color: true,
-              batchNumber: true,
-              unit: true,
             },
           },
         },
@@ -124,28 +123,39 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // Helper function to extract shade from notes
+    const extractShadeFromNotes = (notes: string | null): string => {
+      if (!notes) return '-';
+      const shadeMatch = notes.match(/shade[:\s]+([AB-]+)/i) || 
+                        notes.match(/\b(AA|A|B|B-)\b/i);
+      return shadeMatch ? shadeMatch[1] : '-';
+    };
+
     // Transform transactions to match frontend interface
-    const transformedTransactions = transactions.map((txn) => ({
-      id: `TXN${txn.id.toString().padStart(6, '0')}`,
-      type: txn.type === 'IN' ? 'added' : 'removed',
-      marbleType: txn.marble.marbleType,
-      color: txn.marble.color,
-      quantity: txn.quantity,
-      unit: txn.marble.unit || 'kg',
-      batchNumber: txn.marble.batchNumber || '-',
-      performedBy: txn.requestedBy || 'System',
-      timestamp: new Date(txn.createdAt).toLocaleString('en-US', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true,
-      }),
-      date: new Date(txn.createdAt).toISOString().split('T')[0],
-      reason: txn.reason || undefined,
-      notes: txn.notes || undefined,
-    }));
+    const transformedTransactions = transactions.map((txn) => {
+      const shade = extractShadeFromNotes(txn.notes);
+      
+      return {
+        id: `TXN${txn.id.toString().padStart(6, '0')}`,
+        type: txn.type === 'IN' ? 'added' : 'removed',
+        marbleType: txn.marble.marbleType,
+        color: shade, // Shade extracted from notes
+        quantity: txn.quantity,
+        unit: 'sq ft', // Fixed unit
+        performedBy: txn.requestedBy || 'System',
+        timestamp: new Date(txn.createdAt).toLocaleString('en-US', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true,
+        }),
+        date: new Date(txn.createdAt).toISOString().split('T')[0],
+        reason: txn.reason || undefined,
+        notes: txn.notes || undefined,
+      };
+    });
 
     // Get unique marble types and users for filters
     const allTransactions = await prisma.stockTransaction.findMany({
@@ -182,9 +192,6 @@ export async function GET(request: NextRequest) {
             select: {
               id: true,
               marbleType: true,
-              color: true,
-              batchNumber: true,
-              unit: true,
             },
           },
         },
@@ -193,10 +200,14 @@ export async function GET(request: NextRequest) {
 
       const searchLower = search.toLowerCase();
       allFilteredTransactions = allTransactions.filter((txn) => {
+        const shadeMatch = txn.notes?.match(/shade[:\s]+([AB-]+)/i) || 
+                          txn.notes?.match(/\b(AA|A|B|B-)\b/i);
+        const shade = shadeMatch ? shadeMatch[1] : '';
+        
         return (
           txn.id.toString().includes(search) ||
           txn.marble.marbleType.toLowerCase().includes(searchLower) ||
-          txn.marble.batchNumber?.toLowerCase().includes(searchLower) ||
+          shade.toLowerCase().includes(searchLower) ||
           txn.requestedBy?.toLowerCase().includes(searchLower) ||
           txn.reason?.toLowerCase().includes(searchLower) ||
           txn.notes?.toLowerCase().includes(searchLower)
@@ -211,9 +222,6 @@ export async function GET(request: NextRequest) {
             select: {
               id: true,
               marbleType: true,
-              color: true,
-              batchNumber: true,
-              unit: true,
             },
           },
         },
@@ -250,10 +258,10 @@ export async function GET(request: NextRequest) {
       },
       stats,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching transactions:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch transactions' },
+      { error: `Failed to fetch transactions: ${error.message}` },
       { status: 500 }
     );
   }

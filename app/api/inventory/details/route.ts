@@ -13,8 +13,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get ALL marbles for this type (including those without batch numbers)
-    // to find the oldest one and use its ID (matching main inventory logic)
+    // Get ALL marbles for this type to find the oldest one and use its ID (matching main inventory logic)
     const allMarbles = await prisma.marble.findMany({
       where: { 
         marbleType,
@@ -25,19 +24,25 @@ export async function GET(request: NextRequest) {
     // Get the consistent ID from the oldest marble (matching main inventory aggregation logic)
     const consistentId = allMarbles.length > 0 ? allMarbles[0].id : null;
 
-    // Now get only batches (those with batch numbers) for display
-    const batches = allMarbles.filter(marble => marble.batchNumber !== null);
-
-    // Map batches to include the consistent ID for all batches of this type
-    const batchesWithConsistentId = batches.map(batch => ({
-      ...batch,
-      consistentId, // All batches share the same ID (from oldest marble of this type)
-    }));
+    // Return all stock entries for this marble type
+    // Since we're using shades instead of batch numbers, return all entries
+    const stockEntries = await prisma.stockEntry.findMany({
+      where: {
+        marbleId: allMarbles[0]?.id || 0,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
 
     return NextResponse.json({
       success: true,
-      batches: batchesWithConsistentId,
+      batches: stockEntries.map(entry => ({
+        ...entry,
+        consistentId,
+      })),
       consistentId, // Also return the consistent ID separately
+      // Note: "batches" is kept for backward compatibility, but these are actually stock entries grouped by shade
     });
   } catch (error) {
     console.error('Error fetching inventory details:', error);

@@ -38,7 +38,6 @@ export const stockAPI = {
     quantity: number;
     unit: string;
     supplier?: string;
-    batchNumber?: string;
     costPrice?: number;
     salePrice?: number;
     notes?: string;
@@ -47,7 +46,7 @@ export const stockAPI = {
     slabSizeLength?: number;
     slabSizeWidth?: number;
     numberOfSlabs?: number;
-  }) => apiRequest<{ success: boolean; marble: any; batchNumber?: string }>('/stock/add', {
+  }) => apiRequest<{ success: boolean; marble: any }>('/stock/add', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
