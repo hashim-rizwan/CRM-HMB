@@ -13,34 +13,25 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Group by marble type and get available shades (those with stock > 0)
+    // Group by marble type and get ALL active shades (not just those with stock)
     const marbleTypesMap = new Map<string, Set<string>>();
     
     for (const marble of marbles) {
-      // Get shades that have stock
-      const shadesWithStock = new Set<string>();
+      // Get ALL active shades for this marble type
+      const activeShades = new Set<string>();
       
-      // Group stock entries by shade
-      const shadeStockMap = new Map<string, number>();
-      for (const entry of marble.stockEntries) {
-        const current = shadeStockMap.get(entry.shade) || 0;
-        shadeStockMap.set(entry.shade, current + entry.quantity);
-      }
+      if (marble.shadeAA) activeShades.add('AA');
+      if (marble.shadeA) activeShades.add('A');
+      if (marble.shadeB) activeShades.add('B');
+      if (marble.shadeBMinus) activeShades.add('B-');
 
-      // Check which shades have stock > 0
-      for (const [shade, quantity] of shadeStockMap.entries()) {
-        if (quantity > 0) {
-          shadesWithStock.add(shade);
-        }
-      }
-
-      // Add to the map
-      if (shadesWithStock.size > 0) {
+      // Add to the map (include all active shades, even if no stock)
+      if (activeShades.size > 0) {
         const existing = marbleTypesMap.get(marble.marbleType);
         if (existing) {
-          shadesWithStock.forEach(shade => existing.add(shade));
+          activeShades.forEach(shade => existing.add(shade));
         } else {
-          marbleTypesMap.set(marble.marbleType, shadesWithStock);
+          marbleTypesMap.set(marble.marbleType, activeShades);
         }
       }
     }

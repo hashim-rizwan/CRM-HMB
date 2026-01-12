@@ -121,7 +121,32 @@ export function InventoryDashboard({ searchQuery = '', userRole = 'Staff' }: Inv
   // Filter out of stock items if needed
   let filteredMarbleTypes = marbleTypes;
   if (hideOutOfStock) {
-    filteredMarbleTypes = marbleTypes.filter(mt => mt.overallStatus !== 'Out of Stock');
+    // Filter shades within each marble type, and remove marble types if all shades are filtered out
+    filteredMarbleTypes = marbleTypes.map(mt => {
+      const filteredShades = mt.shades.filter(shade => shade.shadeStatus !== 'Out of Stock');
+      
+      // Recalculate totals and status for this marble type based on filtered shades
+      const filteredTotalQuantity = filteredShades.reduce((sum, s) => sum + s.totalQuantity, 0);
+      const hasLowStock = filteredShades.some(s => s.shadeStatus === 'Low Stock');
+      const hasOutOfStock = filteredShades.some(s => s.shadeStatus === 'Out of Stock');
+      
+      let filteredOverallStatus = 'Out of Stock';
+      if (filteredTotalQuantity === 0) {
+        filteredOverallStatus = 'Out of Stock';
+      } else if (hasLowStock || hasOutOfStock) {
+        filteredOverallStatus = 'Low Stock';
+      } else if (filteredTotalQuantity > 100) {
+        filteredOverallStatus = 'In Stock';
+      }
+
+      return {
+        ...mt,
+        shades: filteredShades,
+        totalQuantity: filteredTotalQuantity,
+        overallStatus: filteredOverallStatus,
+        availableShades: filteredShades.map(s => s.shade),
+      };
+    }).filter(mt => mt.shades.length > 0); // Remove marble types with no shades left after filtering
   }
 
   // Calculate stats from filtered data
@@ -230,16 +255,25 @@ export function InventoryDashboard({ searchQuery = '', userRole = 'Staff' }: Inv
                   <div key={marbleType.id} className="transition-colors">
                     {/* Level 1: Marble Type Table */}
                     <div className="px-6 py-4">
-                      <table className="w-full">
-                        <thead className="bg-gray-50 dark:bg-gray-800">
+                      <table className="w-full table-fixed">
+                        <colgroup>
+                          <col className="w-8" />
+                          <col className="w-16" />
+                          <col className="w-auto" />
+                          <col className="w-auto" />
+                          <col className="w-auto" />
+                          <col className="w-auto" />
+                          <col className="w-auto" />
+                        </colgroup>
+                        <thead className="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
                           <tr>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-8"></th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">ID</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Marble Type</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Available Shades</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Total Quantity</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Last Updated</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider w-8"></th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">ID</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Marble Type</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Available Shades</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Total Quantity</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Last Updated</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -281,29 +315,43 @@ export function InventoryDashboard({ searchQuery = '', userRole = 'Staff' }: Inv
 
                     {/* Level 2: Shades Table (when marble type is expanded) */}
                     {isMarbleExpanded && (
-                      <div className="bg-gray-50 dark:bg-gray-800/50 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
-                        <div className="pl-8 space-y-4">
+                      <div className="bg-gray-50 dark:bg-gray-800/50 py-4 border-t border-gray-200 dark:border-gray-700">
+                        <div className="px-6 space-y-4">
                           {marbleType.shades.map((shade) => {
                             const shadeKey = `${marbleType.marbleType}__${shade.shade}`;
                             const isShadeExpanded = expandedShades.has(shadeKey);
                             const shadeLastUpdated = new Date(shade.lastUpdated).toLocaleDateString();
                             
                             return (
-                              <div key={shadeKey} className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
-                                <table className="w-full">
-                                  <thead className="bg-gray-100 dark:bg-gray-700">
+                              <div key={shadeKey} className="bg-white dark:bg-gray-900">
+                                <table className="w-full table-fixed">
+                                  <colgroup>
+                                    <col className="w-8" />
+                                    <col className="w-16" />
+                                    <col className="w-auto" />
+                                    <col className="w-auto" />
+                                    <col className="w-auto" />
+                                    <col className="w-auto" />
+                                    <col className="w-auto" />
+                                  </colgroup>
+                                  <thead className="bg-gray-200 dark:bg-gray-700 border-b border-gray-300 dark:border-gray-600">
                                     <tr>
-                                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider w-8"></th>
-                                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Shade</th>
-                                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Total Quantity</th>
-                                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Status</th>
-                                      {userRole === 'Admin' && (
+                                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-800 dark:text-gray-300 uppercase tracking-wider w-8"></th>
+                                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-800 dark:text-gray-300 uppercase tracking-wider">Shade</th>
+                                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-800 dark:text-gray-300 uppercase tracking-wider">Total Quantity</th>
+                                      {userRole === 'Admin' ? (
                                         <>
-                                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Cost Price</th>
-                                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Sale Price</th>
+                                          <th className="px-4 py-2 text-left text-xs font-semibold text-gray-800 dark:text-gray-300 uppercase tracking-wider">Cost Price</th>
+                                          <th className="px-4 py-2 text-left text-xs font-semibold text-gray-800 dark:text-gray-300 uppercase tracking-wider">Sale Price</th>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <th className="px-4 py-2 text-left text-xs font-semibold text-gray-800 dark:text-gray-300 uppercase tracking-wider"></th>
+                                          <th className="px-4 py-2 text-left text-xs font-semibold text-gray-800 dark:text-gray-300 uppercase tracking-wider"></th>
                                         </>
                                       )}
-                                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Last Updated</th>
+                                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-800 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-800 dark:text-gray-300 uppercase tracking-wider">Last Updated</th>
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -324,12 +372,7 @@ export function InventoryDashboard({ searchQuery = '', userRole = 'Staff' }: Inv
                                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                                         {shade.totalQuantity.toLocaleString()} sq ft
                                       </td>
-                                      <td className="px-4 py-3 whitespace-nowrap">
-                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(shade.shadeStatus)}`}>
-                                          {shade.shadeStatus}
-                                        </span>
-                                      </td>
-                                      {userRole === 'Admin' && (
+                                      {userRole === 'Admin' ? (
                                         <>
                                           <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                                             {shade.costPrice != null ? `PKR ${shade.costPrice.toLocaleString()}/sq ft` : 'N/A'}
@@ -338,7 +381,17 @@ export function InventoryDashboard({ searchQuery = '', userRole = 'Staff' }: Inv
                                             {shade.salePrice != null ? `PKR ${shade.salePrice.toLocaleString()}/sq ft` : 'N/A'}
                                           </td>
                                         </>
+                                      ) : (
+                                        <>
+                                          <td className="px-4 py-3 whitespace-nowrap"></td>
+                                          <td className="px-4 py-3 whitespace-nowrap"></td>
+                                        </>
                                       )}
+                                      <td className="px-4 py-3 whitespace-nowrap">
+                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(shade.shadeStatus)}`}>
+                                          {shade.shadeStatus}
+                                        </span>
+                                      </td>
                                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                         {shadeLastUpdated}
                                       </td>
@@ -351,11 +404,11 @@ export function InventoryDashboard({ searchQuery = '', userRole = 'Staff' }: Inv
                                   <div className="bg-gray-50 dark:bg-gray-800/50 px-4 pb-4 border-t border-gray-200 dark:border-gray-700">
                                     <div className="pt-4">
                                       <table className="w-full">
-                                        <thead className="bg-gray-100 dark:bg-gray-700">
+                                        <thead className="bg-gray-200 dark:bg-gray-700 border-b border-gray-300 dark:border-gray-600">
                                           <tr>
-                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Quantity</th>
-                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Dimensions</th>
-                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Number of Slabs</th>
+                                            <th className="px-4 py-2 text-left text-xs font-semibold text-gray-800 dark:text-gray-300 uppercase tracking-wider">Quantity</th>
+                                            <th className="px-4 py-2 text-left text-xs font-semibold text-gray-800 dark:text-gray-300 uppercase tracking-wider">Dimensions</th>
+                                            <th className="px-4 py-2 text-left text-xs font-semibold text-gray-800 dark:text-gray-300 uppercase tracking-wider">Number of Slabs</th>
                                           </tr>
                                         </thead>
                                         <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">

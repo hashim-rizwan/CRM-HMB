@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
       if (marble.shadeB) activeShades.push('B');
       if (marble.shadeBMinus) activeShades.push('B-');
 
-      // Group stock entries by shade
+      // Initialize shade map with ALL active shades (even if no stock)
       const shadeMap = new Map<string, {
         entries: Array<{
           id: number;
@@ -41,55 +41,58 @@ export async function GET(request: NextRequest) {
         lastUpdated: Date;
       }>();
 
+      // Initialize all active shades with prices (even if no stock entries exist)
+      for (const shade of activeShades) {
+        let costPrice: number | null = null;
+        let salePrice: number | null = null;
+        
+        if (shade === 'AA') {
+          costPrice = marble.costPriceAA;
+          salePrice = marble.salePriceAA;
+        } else if (shade === 'A') {
+          costPrice = marble.costPriceA;
+          salePrice = marble.salePriceA;
+        } else if (shade === 'B') {
+          costPrice = marble.costPriceB;
+          salePrice = marble.salePriceB;
+        } else if (shade === 'B-') {
+          costPrice = marble.costPriceBMinus;
+          salePrice = marble.salePriceBMinus;
+        }
+
+        shadeMap.set(shade, {
+          entries: [],
+          totalQuantity: 0,
+          costPrice,
+          salePrice,
+          lastUpdated: marble.updatedAt, // Use marble updatedAt as default
+        });
+      }
+
       // Process stock entries by shade
       for (const entry of marble.stockEntries) {
         const shade = entry.shade;
         
-        if (!shadeMap.has(shade)) {
-          // Get prices for this shade from the marble record
-          let costPrice: number | null = null;
-          let salePrice: number | null = null;
-          
-          if (shade === 'AA') {
-            costPrice = marble.costPriceAA;
-            salePrice = marble.salePriceAA;
-          } else if (shade === 'A') {
-            costPrice = marble.costPriceA;
-            salePrice = marble.salePriceA;
-          } else if (shade === 'B') {
-            costPrice = marble.costPriceB;
-            salePrice = marble.salePriceB;
-          } else if (shade === 'B-') {
-            costPrice = marble.costPriceBMinus;
-            salePrice = marble.salePriceBMinus;
-          }
-
-          shadeMap.set(shade, {
-            entries: [],
-            totalQuantity: 0,
-            costPrice,
-            salePrice,
-            lastUpdated: entry.updatedAt,
+        // Only process if this shade is active (should already be in map)
+        if (shadeMap.has(shade)) {
+          const shadeData = shadeMap.get(shade)!;
+          shadeData.entries.push({
+            id: entry.id,
+            quantity: entry.quantity,
+            slabSizeLength: entry.slabSizeLength,
+            slabSizeWidth: entry.slabSizeWidth,
+            numberOfSlabs: entry.numberOfSlabs,
+            notes: entry.notes,
           });
-        }
-
-        const shadeData = shadeMap.get(shade)!;
-        shadeData.entries.push({
-          id: entry.id,
-          quantity: entry.quantity,
-          slabSizeLength: entry.slabSizeLength,
-          slabSizeWidth: entry.slabSizeWidth,
-          numberOfSlabs: entry.numberOfSlabs,
-          notes: entry.notes,
-        });
-        shadeData.totalQuantity += entry.quantity;
-        
-        if (entry.updatedAt > shadeData.lastUpdated) {
-          shadeData.lastUpdated = entry.updatedAt;
+          shadeData.totalQuantity += entry.quantity;
+          
+          if (entry.updatedAt > shadeData.lastUpdated) {
+            shadeData.lastUpdated = entry.updatedAt;
+          }
         }
       }
 
-      // Convert shade map to array
+      // Convert shade map to array - now includes ALL active shades
       const shades = Array.from(shadeMap.entries()).map(([shade, shadeData]) => {
         // Calculate shade status based on total quantity
         let shadeStatus = 'Out of Stock';

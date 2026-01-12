@@ -62,8 +62,14 @@ export async function GET(request: NextRequest) {
 
     // Calculate trend data (inventory levels over time)
     const trendData = [];
-    const marbles = await prisma.marble.findMany();
-    const totalInventory = marbles.reduce((sum, m) => sum + m.quantity, 0);
+    const marbles = await prisma.marble.findMany({
+      include: {
+        stockEntries: true,
+      },
+    });
+    const totalInventory = marbles.reduce((sum, m) => 
+      sum + m.stockEntries.reduce((entrySum, e) => entrySum + e.quantity, 0), 0
+    );
     
     for (let i = 0; i < 6; i++) {
       trendData.push({
