@@ -26,7 +26,6 @@ export async function GET(request: NextRequest) {
         marble: {
           select: {
             marbleType: true,
-            color: true,
           },
         },
       },
@@ -41,7 +40,7 @@ export async function GET(request: NextRequest) {
     const transformedStocks = reservedStocks.map((stock) => ({
       id: stock.id,
       marbleType: stock.marble.marbleType,
-      shade: stock.marble.color,
+      shade: stock.shade, // Use shade from ReservedStock, not from Marble
       quantity: stock.quantity,
       slabSizeLength: stock.slabSizeLength,
       slabSizeWidth: stock.slabSizeWidth,

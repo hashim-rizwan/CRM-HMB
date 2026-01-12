@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react';
-import { Package, Search, Download, Calendar, User, Phone, Mail } from 'lucide-react';
+import { Package, Search, Download, Calendar, User, Phone, Mail, X, AlertCircle, CheckCircle, Truck } from 'lucide-react';
 
 interface ReservedStockItem {
   id: number;
@@ -30,6 +30,16 @@ export function ReservedStock() {
   const [limit, setLimit] = useState(10);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+  const [reservationToRelease, setReservationToRelease] = useState<ReservedStockItem | null>(null);
+  const [reservationToCheckout, setReservationToCheckout] = useState<ReservedStockItem | null>(null);
+  const [releasing, setReleasing] = useState(false);
+  const [checkingOut, setCheckingOut] = useState(false);
+  const [notification, setNotification] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
     fetchReservedStocks();
@@ -60,25 +70,101 @@ export function ReservedStock() {
     }
   };
 
-  const handleRelease = async (id: number) => {
-    if (!confirm('Are you sure you want to release this reservation?')) return;
+  const handleReleaseClick = (item: ReservedStockItem) => {
+    setReservationToRelease(item);
+    setShowConfirmModal(true);
+  };
 
+  const handleConfirmRelease = async () => {
+    if (!reservationToRelease) return;
+
+    setReleasing(true);
     try {
-      const response = await fetch(`/api/stock/reserved/${id}/release`, {
+      const response = await fetch(`/api/stock/reserved/${reservationToRelease.id}/release`, {
         method: 'POST',
       });
       const data = await response.json();
 
       if (data.success) {
+        setNotification({
+          type: 'success',
+          message: 'Reservation released successfully',
+        });
+        setShowConfirmModal(false);
+        setReservationToRelease(null);
         fetchReservedStocks();
-        alert('Reservation released successfully');
+        // Auto-hide notification after 3 seconds
+        setTimeout(() => setNotification(null), 3000);
       } else {
-        alert(data.error || 'Failed to release reservation');
+        setNotification({
+          type: 'error',
+          message: data.error || 'Failed to release reservation',
+        });
+        setTimeout(() => setNotification(null), 5000);
       }
     } catch (error) {
       console.error('Error releasing reservation:', error);
-      alert('Failed to release reservation');
+      setNotification({
+        type: 'error',
+        message: 'Failed to release reservation',
+      });
+      setTimeout(() => setNotification(null), 5000);
+    } finally {
+      setReleasing(false);
     }
+  };
+
+  const handleCancelRelease = () => {
+    setShowConfirmModal(false);
+    setReservationToRelease(null);
+  };
+
+  const handleCheckoutClick = (item: ReservedStockItem) => {
+    setReservationToCheckout(item);
+    setShowCheckoutModal(true);
+  };
+
+  const handleConfirmCheckout = async () => {
+    if (!reservationToCheckout) return;
+
+    setCheckingOut(true);
+    try {
+      const response = await fetch(`/api/stock/reserved/${reservationToCheckout.id}/checkout`, {
+        method: 'POST',
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        setNotification({
+          type: 'success',
+          message: 'Reservation marked as delivered successfully',
+        });
+        setShowCheckoutModal(false);
+        setReservationToCheckout(null);
+        fetchReservedStocks();
+        setTimeout(() => setNotification(null), 3000);
+      } else {
+        setNotification({
+          type: 'error',
+          message: data.error || 'Failed to mark as delivered',
+        });
+        setTimeout(() => setNotification(null), 5000);
+      }
+    } catch (error) {
+      console.error('Error checking out reservation:', error);
+      setNotification({
+        type: 'error',
+        message: 'Failed to mark as delivered',
+      });
+      setTimeout(() => setNotification(null), 5000);
+    } finally {
+      setCheckingOut(false);
+    }
+  };
+
+  const handleCancelCheckout = () => {
+    setShowCheckoutModal(false);
+    setReservationToCheckout(null);
   };
 
   const exportToCSV = () => {
@@ -125,6 +211,183 @@ export function ReservedStock() {
 
   return (
     <div className="p-8">
+      {/* Notification Toast */}
+      {notification && (
+        <div className="fixed top-4 right-4 z-50 animate-slide-in">
+          <div className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg ${
+            notification.type === 'success'
+              ? 'bg-green-500 text-white'
+              : 'bg-red-500 text-white'
+          }`}>
+            {notification.type === 'success' ? (
+              <CheckCircle className="w-5 h-5" />
+            ) : (
+              <AlertCircle className="w-5 h-5" />
+            )}
+            <span>{notification.message}</span>
+            <button
+              onClick={() => setNotification(null)}
+              className="ml-2 hover:opacity-70"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {showConfirmModal && reservationToRelease && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-[#1F2937] dark:text-white">
+                Release Reservation
+              </h3>
+              <button
+                onClick={handleCancelRelease}
+                disabled={releasing}
+                className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-50"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="mb-6">
+              <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
+                Are you sure you want to release this reservation? The stock will be <strong>added back to inventory</strong>.
+              </p>
+              
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Marble Type:</span>
+                  <span className="text-sm font-medium text-[#1F2937] dark:text-white">{reservationToRelease.marbleType}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Shade:</span>
+                  <span className="text-sm font-medium text-[#1F2937] dark:text-white">{reservationToRelease.shade}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Quantity:</span>
+                  <span className="text-sm font-medium text-[#1F2937] dark:text-white">{reservationToRelease.quantity.toLocaleString()} sq ft</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Slab Size:</span>
+                  <span className="text-sm font-medium text-[#1F2937] dark:text-white">
+                    {reservationToRelease.slabSizeLength}×{reservationToRelease.slabSizeWidth} ({reservationToRelease.numberOfSlabs} slabs)
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Client:</span>
+                  <span className="text-sm font-medium text-[#1F2937] dark:text-white">{reservationToRelease.clientName}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleCancelRelease}
+                disabled={releasing}
+                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmRelease}
+                disabled={releasing}
+                className="flex-1 px-4 py-2 bg-[#16A34A] dark:bg-green-600 text-white rounded-lg hover:bg-[#15803D] dark:hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {releasing ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Releasing...</span>
+                  </>
+                ) : (
+                  'Confirm Release'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Checkout/Delivery Confirmation Modal */}
+      {showCheckoutModal && reservationToCheckout && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-[#1F2937] dark:text-white">
+                Mark as Delivered
+              </h3>
+              <button
+                onClick={handleCancelCheckout}
+                disabled={checkingOut}
+                className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-50"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="mb-6">
+              <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
+                Mark this reservation as delivered? The stock will <strong>NOT</strong> be added back to inventory.
+              </p>
+              
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Marble Type:</span>
+                  <span className="text-sm font-medium text-[#1F2937] dark:text-white">{reservationToCheckout.marbleType}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Shade:</span>
+                  <span className="text-sm font-medium text-[#1F2937] dark:text-white">{reservationToCheckout.shade}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Quantity:</span>
+                  <span className="text-sm font-medium text-[#1F2937] dark:text-white">{reservationToCheckout.quantity.toLocaleString()} sq ft</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Slab Size:</span>
+                  <span className="text-sm font-medium text-[#1F2937] dark:text-white">
+                    {reservationToCheckout.slabSizeLength}×{reservationToCheckout.slabSizeWidth} ({reservationToCheckout.numberOfSlabs} slabs)
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Client:</span>
+                  <span className="text-sm font-medium text-[#1F2937] dark:text-white">{reservationToCheckout.clientName}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleCancelCheckout}
+                disabled={checkingOut}
+                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmCheckout}
+                disabled={checkingOut}
+                className="flex-1 px-4 py-2 bg-[#2563EB] dark:bg-blue-600 text-white rounded-lg hover:bg-[#1D4ED8] dark:hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {checkingOut ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Processing...</span>
+                  </>
+                ) : (
+                  <>
+                    <Truck className="w-4 h-4" />
+                    <span>Mark as Delivered</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
@@ -163,6 +426,7 @@ export function ReservedStock() {
           >
             <option value="all">All Status</option>
             <option value="Reserved">Reserved</option>
+            <option value="Delivered">Delivered</option>
             <option value="Released">Released</option>
             <option value="Cancelled">Cancelled</option>
           </select>
@@ -248,6 +512,8 @@ export function ReservedStock() {
                           <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                             item.status === 'Reserved' 
                               ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                              : item.status === 'Delivered'
+                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
                               : item.status === 'Released'
                               ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
                               : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
@@ -260,12 +526,23 @@ export function ReservedStock() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                           {item.status === 'Reserved' && (
-                            <button
-                              onClick={() => handleRelease(item.id)}
-                              className="text-[#16A34A] hover:text-[#15803D] dark:text-green-400 dark:hover:text-green-300"
-                            >
-                              Release
-                            </button>
+                            <div className="flex items-center gap-3">
+                              <button
+                                onClick={() => handleReleaseClick(item)}
+                                className="text-[#16A34A] hover:text-[#15803D] dark:text-green-400 dark:hover:text-green-300 font-medium"
+                                title="Release back to inventory"
+                              >
+                                Release
+                              </button>
+                              <button
+                                onClick={() => handleCheckoutClick(item)}
+                                className="text-[#2563EB] hover:text-[#1D4ED8] dark:text-blue-400 dark:hover:text-blue-300 font-medium flex items-center gap-1"
+                                title="Mark as delivered (client has taken delivery)"
+                              >
+                                <Truck className="w-4 h-4" />
+                                Delivered
+                              </button>
+                            </div>
                           )}
                         </td>
                       </tr>

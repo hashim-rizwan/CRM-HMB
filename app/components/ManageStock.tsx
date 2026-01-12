@@ -278,8 +278,8 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
       setScannedReserveBarcode('');
       
       // Refresh inventory data after reserving stock
-      const response = await inventoryAPI.getAll();
-      setInventory(response.marbles || []);
+      const inventoryResponse = await inventoryAPI.getAll();
+      setInventory(inventoryResponse.marbles || []);
       
       // Refresh marble types data
       const marbleTypesResponse = await inventoryAPI.getMarbleTypes();
@@ -290,7 +290,8 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
       setSuccessMessage(`Stock reserved successfully! Reserved: ${totalSquareFeet.toLocaleString()} sq ft for ${reserveFormData.clientName}`);
       setTimeout(() => setSuccessMessage(null), 5000);
     } catch (err: any) {
-      setError(err.message || 'Failed to reserve stock');
+      console.error('Error reserving stock:', err);
+      setError(err.message || 'Failed to reserve stock. Please check your inputs and try again.');
     } finally {
       setLoading(false);
     }
@@ -442,7 +443,7 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
     return Array.from(types).sort();
   }, [inventory]);
 
-  // Fetch marble types and shades for Remove Stock dropdowns
+  // Fetch marble types and shades for Remove Stock and Reserve Stock dropdowns
   useEffect(() => {
     const fetchMarbleTypes = async () => {
       try {
@@ -455,7 +456,7 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
       }
     };
     
-    if (activeTab === 'remove') {
+    if (activeTab === 'remove' || activeTab === 'reserve') {
       fetchMarbleTypes();
     }
   }, [activeTab]);

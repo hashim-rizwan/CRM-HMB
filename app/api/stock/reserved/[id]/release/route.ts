@@ -46,14 +46,16 @@ export async function POST(
       },
     });
 
-    // Restore quantity to marble
-    await prisma.marble.update({
-      where: { id: reservedStock.marbleId },
+    // Restore stock by creating a new StockEntry
+    await prisma.stockEntry.create({
       data: {
-        quantity: {
-          increment: reservedStock.quantity,
-        },
-        updatedAt: new Date(),
+        marbleId: reservedStock.marbleId,
+        shade: reservedStock.shade,
+        quantity: reservedStock.quantity,
+        slabSizeLength: reservedStock.slabSizeLength,
+        slabSizeWidth: reservedStock.slabSizeWidth,
+        numberOfSlabs: reservedStock.numberOfSlabs,
+        notes: `Released reservation for ${reservedStock.clientName}${reservedStock.notes ? ` - ${reservedStock.notes}` : ''}`,
       },
     });
 
@@ -68,25 +70,32 @@ export async function POST(
       },
     });
 
-    // Update marble status
-    const updatedMarble = await prisma.marble.findUnique({
+    // Recalculate total quantity and update marble status
+    const stockEntries = await prisma.stockEntry.findMany({
+      where: {
+        marbleId: reservedStock.marbleId,
+        shade: reservedStock.shade,
+      },
+    });
+
+    const totalQuantity = stockEntries.reduce((sum, entry) => sum + entry.quantity, 0);
+
+    let status = 'In Stock';
+    if (totalQuantity === 0) {
+      status = 'Out of Stock';
+    } else if (totalQuantity < 100) {
+      status = 'Low Stock';
+    }
+
+    const marble = await prisma.marble.findUnique({
       where: { id: reservedStock.marbleId },
     });
 
-    if (updatedMarble) {
-      let status = 'In Stock';
-      if (updatedMarble.quantity < 100) {
-        status = 'Low Stock';
-      } else if (updatedMarble.quantity === 0) {
-        status = 'Out of Stock';
-      }
-
-      if (updatedMarble.status !== status) {
-        await prisma.marble.update({
-          where: { id: reservedStock.marbleId },
-          data: { status },
-        });
-      }
+    if (marble && marble.status !== status) {
+      await prisma.marble.update({
+        where: { id: reservedStock.marbleId },
+        data: { status },
+      });
     }
 
     return NextResponse.json({
