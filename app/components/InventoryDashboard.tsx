@@ -374,7 +374,7 @@ export function InventoryDashboard({ searchQuery = '', userRole = 'Staff' }: Inv
                                                 )}
                                               </td>
                                               <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
-                                                {entry.slabInfo ? (
+                                                {entry.slabInfo && entry.slabInfo.numberOfSlabs > 0 ? (
                                                   <span>
                                                     {entry.slabInfo.numberOfSlabs} {entry.slabInfo.numberOfSlabs === 1 ? 'slab' : 'slabs'}
                                                   </span>

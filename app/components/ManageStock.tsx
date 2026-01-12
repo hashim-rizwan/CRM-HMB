@@ -90,13 +90,15 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
         color: addFormData.shade, // Use shade as color
         quantity: totalSquareFeet,
         unit: 'square feet',
-        location: 'N/A', // Default location (will be removed from schema)
         supplier: undefined,
         batchNumber: undefined, // No batch number, using shade instead
         costPrice: undefined,
         salePrice: undefined,
         notes: addFormData.notes || `Slab Size: ${length}x${width}, Number of Slabs: ${numberOfSlabs}`,
         barcode: scannedBarcode || undefined,
+        slabSizeLength: length, // Send directly
+        slabSizeWidth: width, // Send directly
+        numberOfSlabs: parseInt(numberOfSlabs.toString(), 10), // Send directly
       });
 
       setAddFormData({
@@ -365,12 +367,18 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
 
       // Build shades array with pricing data (only for active shades)
       const shadesData = activeShades
-        .map(([shade, data]) => ({
-          shade,
-          costPrice: parseFloat(data.costPrice),
-          salePrice: parseFloat(data.salePrice),
-        }))
-        .filter((s) => !isNaN(s.costPrice) && !isNaN(s.salePrice)); // Filter out invalid entries
+        .map(([shade, data]) => {
+          const costPrice = data.costPrice ? parseFloat(String(data.costPrice)) : NaN;
+          const salePrice = data.salePrice ? parseFloat(String(data.salePrice)) : NaN;
+          return {
+            shade,
+            costPrice: isNaN(costPrice) ? null : costPrice,
+            salePrice: isNaN(salePrice) ? null : salePrice,
+          };
+        })
+        .filter((s): s is { shade: string; costPrice: number; salePrice: number } => 
+          s.costPrice !== null && s.salePrice !== null && !isNaN(s.costPrice) && !isNaN(s.salePrice) && s.costPrice >= 0 && s.salePrice >= 0
+        ); // Filter out invalid entries and ensure types
 
       // Validate that all active shades have both prices
       const incompleteShades = activeShades.filter(([_, data]) => !data.costPrice || !data.salePrice);
@@ -386,14 +394,6 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
         return;
       }
 
-      // Validate that all prices are valid numbers
-      const invalidShades = shadesData.filter(s => isNaN(s.costPrice) || isNaN(s.salePrice) || s.costPrice < 0 || s.salePrice < 0);
-      if (invalidShades.length > 0) {
-        setError(`Please enter valid prices (non-negative numbers) for all shades. Invalid prices for: ${invalidShades.map(s => s.shade).join(', ')}`);
-        setLoading(false);
-        return;
-      }
-
       const response = await marblesAPI.create({
         marbleType: newItemFormData.marbleType,
         notes: newItemFormData.notes || undefined,
@@ -401,10 +401,10 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
       });
       
       // Store the generated barcodes from response
-      if (response.marbles && response.marbles.length > 0) {
-        const barcodes = response.marbles.map((m: any) => `${m.color}: ${m.barcode}`).join(', ');
+      if (response && 'barcodes' in response && response.barcodes && response.barcodes.length > 0) {
+        const barcodes = response.barcodes.map((b: any) => `${b.shade}: ${b.barcode}`).join(', ');
         setGeneratedBarcode(barcodes);
-        setSuccessMessage(`New marble type created successfully! ${response.marbles.length} shade${response.marbles.length > 1 ? 's' : ''} added with barcodes. You can now use "Add Stock" to add inventory.`);
+        setSuccessMessage(`New marble type created successfully! ${response.barcodes.length} shade${response.barcodes.length > 1 ? 's' : ''} added with barcodes. You can now use "Add Stock" to add inventory.`);
       } else {
         setSuccessMessage('New marble type created successfully! You can now use "Add Stock" to add inventory for this marble type.');
       }
@@ -482,23 +482,27 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
     
     inventory.forEach((marble: any) => {
       const key = marble.marbleType;
+      const quantity = marble.quantity || 0;
+      const unit = marble.unit || 'square feet';
+      
       if (stockMap.has(key)) {
         const existing = stockMap.get(key)!;
         stockMap.set(key, {
-          available: existing.available + marble.quantity,
+          available: existing.available + quantity,
           unit: existing.unit, // Use first unit found for each type
         });
       } else {
         stockMap.set(key, {
-          available: marble.quantity,
-          unit: marble.unit || 'square feet',
+          available: quantity,
+          unit: unit,
         });
       }
     });
 
     return Array.from(stockMap.entries()).map(([type, data]) => ({
       type,
-      ...data,
+      available: data.available || 0,
+      unit: data.unit || 'square feet',
     }));
   }, [inventory]);
 
@@ -550,7 +554,7 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
             marbleType: marble.marbleType,
             shade: marble.color || '', // Use color field for shade
           });
-          setSuccessMessage(`Barcode scanned: ${barcode}. Marble: ${marble.marbleType} - ${marble.color}`);
+          setSuccessMessage(`Barcode scanned: ${barcode}. Marble: ${marble.marbleType}${marble.color ? ` - ${marble.color}` : ''}`);
           setTimeout(() => setSuccessMessage(null), 5000);
         } else if (activeTab === 'remove') {
           // Auto-populate Remove Stock form
@@ -561,7 +565,7 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
             shade: marble.color || '', // Use color field for shade
           });
           setScannedRemoveBarcode(barcode);
-          setSuccessMessage(`Barcode scanned: ${barcode}. Marble: ${marble.marbleType} - ${marble.color}`);
+          setSuccessMessage(`Barcode scanned: ${barcode}. Marble: ${marble.marbleType}${marble.color ? ` - ${marble.color}` : ''}`);
           setTimeout(() => setSuccessMessage(null), 5000);
         } else if (activeTab === 'reserve') {
           // Auto-populate Reserve Stock form
@@ -572,7 +576,7 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
             shade: marble.color || '', // Use color field for shade
           });
           setScannedReserveBarcode(barcode);
-          setSuccessMessage(`Barcode scanned: ${barcode}. Marble: ${marble.marbleType} - ${marble.color}`);
+          setSuccessMessage(`Barcode scanned: ${barcode}. Marble: ${marble.marbleType}${marble.color ? ` - ${marble.color}` : ''}`);
           setTimeout(() => setSuccessMessage(null), 5000);
         }
       } else {
@@ -1076,16 +1080,15 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
                         // Find stock for this marble type and shade combination
                         const matchingStock = inventory.find((marble: any) => 
                           marble.marbleType === addFormData.marbleType && 
-                          marble.color === addFormData.shade &&
-                          marble.batchNumber === null // Only actual stock entries, not templates
+                          marble.color === addFormData.shade
                         );
-                        if (matchingStock) {
+                        if (matchingStock && matchingStock.quantity !== undefined && matchingStock.quantity !== null) {
                           return `${matchingStock.quantity.toLocaleString()} ${matchingStock.unit || 'sq ft'}`;
                         }
                         // Fallback to total stock for marble type if shade not selected or not found
                         const currentStock = availableStock.find(s => s.type === addFormData.marbleType);
-                        return currentStock 
-                          ? `${currentStock.available.toLocaleString()} ${currentStock.unit}`
+                        return currentStock && currentStock.available !== undefined && currentStock.available !== null
+                          ? `${currentStock.available.toLocaleString()} ${currentStock.unit || 'sq ft'}`
                           : '0 sq ft';
                       })()}
                     </p>
@@ -1127,20 +1130,19 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
                         // Find stock for this marble type and shade combination
                         const matchingStock = inventory.find((marble: any) => 
                           marble.marbleType === addFormData.marbleType && 
-                          marble.color === addFormData.shade &&
-                          marble.batchNumber === null
+                          marble.color === addFormData.shade
                         );
                         
-                        if (matchingStock) {
+                        if (matchingStock && matchingStock.quantity !== undefined && matchingStock.quantity !== null) {
                           const newTotal = matchingStock.quantity + adding;
                           return `${newTotal.toLocaleString()} ${matchingStock.unit || 'sq ft'}`;
                         }
                         
                         // Fallback to total stock for marble type
                         const currentStock = availableStock.find(s => s.type === addFormData.marbleType);
-                        if (currentStock) {
+                        if (currentStock && currentStock.available !== undefined && currentStock.available !== null) {
                           const newTotal = currentStock.available + adding;
-                          return `${newTotal.toLocaleString()} ${currentStock.unit}`;
+                          return `${newTotal.toLocaleString()} ${currentStock.unit || 'sq ft'}`;
                         }
                         
                         // If no existing stock, just show what's being added
@@ -1152,7 +1154,7 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
 
                 {addFormData.marbleType && addFormData.slabSizeLength && addFormData.slabSizeWidth && addFormData.numberOfSlabs && (() => {
                   const currentStock = availableStock.find(s => s.type === addFormData.marbleType);
-                  if (currentStock) {
+                  if (currentStock && currentStock.available !== undefined && currentStock.available !== null) {
                     const length = parseFloat(addFormData.slabSizeLength);
                     const width = parseFloat(addFormData.slabSizeWidth);
                     const numberOfSlabs = parseFloat(addFormData.numberOfSlabs);
@@ -1162,7 +1164,7 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
                       return (
                         <div className="mt-4 p-3 bg-[#D1FAE5] dark:bg-green-900 border border-[#16A34A] dark:border-green-700 rounded-lg">
                           <p className="text-xs text-[#065F46] dark:text-green-300">
-                            ✓ Stock level will exceed 10,000 {currentStock.unit}
+                            ✓ Stock level will exceed 10,000 {currentStock.unit || 'sq ft'}
                           </p>
                         </div>
                       );
@@ -1399,13 +1401,13 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
                           marble.marbleType === removeFormData.marbleType && 
                           marble.color === removeFormData.shade
                         );
-                        if (matchingStock) {
+                        if (matchingStock && matchingStock.quantity !== undefined && matchingStock.quantity !== null) {
                           return `${matchingStock.quantity.toLocaleString()} ${matchingStock.unit || 'sq ft'}`;
                         }
                         // Fallback to total stock for marble type if shade not selected or not found
                         const currentStock = availableStock.find(s => s.type === removeFormData.marbleType);
-                        return currentStock 
-                          ? `${currentStock.available.toLocaleString()} ${currentStock.unit}`
+                        return currentStock && currentStock.available !== undefined && currentStock.available !== null
+                          ? `${currentStock.available.toLocaleString()} ${currentStock.unit || 'sq ft'}`
                           : '0 sq ft';
                       })()}
                     </p>
@@ -1450,16 +1452,16 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
                           marble.color === removeFormData.shade
                         );
                         
-                        if (matchingStock) {
+                        if (matchingStock && matchingStock.quantity !== undefined && matchingStock.quantity !== null) {
                           const newTotal = Math.max(0, matchingStock.quantity - removing);
                           return `${newTotal.toLocaleString()} ${matchingStock.unit || 'sq ft'}`;
                         }
                         
                         // Fallback to total stock for marble type
                         const currentStock = availableStock.find(s => s.type === removeFormData.marbleType);
-                        if (currentStock) {
+                        if (currentStock && currentStock.available !== undefined && currentStock.available !== null) {
                           const newTotal = Math.max(0, currentStock.available - removing);
-                          return `${newTotal.toLocaleString()} ${currentStock.unit}`;
+                          return `${newTotal.toLocaleString()} ${currentStock.unit || 'sq ft'}`;
                         }
                         
                         return '-';
@@ -1725,13 +1727,13 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
                           marble.marbleType === reserveFormData.marbleType && 
                           marble.color === reserveFormData.shade
                         );
-                        if (matchingStock) {
+                        if (matchingStock && matchingStock.quantity !== undefined && matchingStock.quantity !== null) {
                           return `${matchingStock.quantity.toLocaleString()} ${matchingStock.unit || 'sq ft'}`;
                         }
                         // Fallback to total stock for marble type if shade not selected or not found
                         const currentStock = availableStock.find(s => s.type === reserveFormData.marbleType);
-                        return currentStock 
-                          ? `${currentStock.available.toLocaleString()} ${currentStock.unit}`
+                        return currentStock && currentStock.available !== undefined && currentStock.available !== null
+                          ? `${currentStock.available.toLocaleString()} ${currentStock.unit || 'sq ft'}`
                           : '0 sq ft';
                       })()}
                     </p>
@@ -1776,16 +1778,16 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
                           marble.color === reserveFormData.shade
                         );
                         
-                        if (matchingStock) {
+                        if (matchingStock && matchingStock.quantity !== undefined && matchingStock.quantity !== null) {
                           const newTotal = Math.max(0, matchingStock.quantity - reserving);
                           return `${newTotal.toLocaleString()} ${matchingStock.unit || 'sq ft'}`;
                         }
                         
                         // Fallback to total stock for marble type
                         const currentStock = availableStock.find(s => s.type === reserveFormData.marbleType);
-                        if (currentStock) {
+                        if (currentStock && currentStock.available !== undefined && currentStock.available !== null) {
                           const newTotal = Math.max(0, currentStock.available - reserving);
-                          return `${newTotal.toLocaleString()} ${currentStock.unit}`;
+                          return `${newTotal.toLocaleString()} ${currentStock.unit || 'sq ft'}`;
                         }
                         
                         return '-';

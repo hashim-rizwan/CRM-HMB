@@ -44,6 +44,9 @@ export const stockAPI = {
     notes?: string;
     barcode?: string;
     isNewItem?: boolean;
+    slabSizeLength?: number;
+    slabSizeWidth?: number;
+    numberOfSlabs?: number;
   }) => apiRequest<{ success: boolean; marble: any; batchNumber?: string }>('/stock/add', {
     method: 'POST',
     body: JSON.stringify(data),
@@ -121,7 +124,14 @@ export const marblesAPI = {
       costPrice: number;
       salePrice: number;
     }>;
-  }) => apiRequest<{ success: boolean; marbles: any[] }>('/marbles/create', {
+  }) => apiRequest<{ 
+    success: boolean; 
+    marble: any;
+    barcodes: Array<{
+      shade: string;
+      barcode: string;
+    }>;
+  }>('/marbles/create', {
     method: 'POST',
     body: JSON.stringify(data),
   }),

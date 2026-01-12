@@ -13,21 +13,52 @@ datasource db {
 
 model Marble {
   id                Int                @id @default(autoincrement())
-  marbleType        String
-  color             String              // Stores shade (AA, A, B, B-)
-  quantity          Float               @default(0)
-  unit              String              @default("square feet")
-  supplier          String?             // Optional supplier info (for backward compatibility)
-  batchNumber       String?             // Optional batch number (for backward compatibility, new entries use shade instead)
-  barcode           String?             @unique
-  costPrice         Float?
-  salePrice         Float?
-  status            String              @default("In Stock")
-  notes             String?             // Stores slab info: "Slab Size: LENGTHxWIDTH, Number of Slabs: COUNT"
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
+  marbleType        String             @unique
+  // Shade activation flags
+  shadeAA           Boolean            @default(false)
+  shadeA            Boolean            @default(false)
+  shadeB            Boolean            @default(false)
+  shadeBMinus       Boolean            @default(false)
+  // Cost prices for each shade
+  costPriceAA       Float?
+  costPriceA        Float?
+  costPriceB        Float?
+  costPriceBMinus   Float?
+  // Sale prices for each shade
+  salePriceAA       Float?
+  salePriceA        Float?
+  salePriceB        Float?
+  salePriceBMinus   Float?
+  // Barcodes for each shade
+  barcodeAA         String?            @unique
+  barcodeA          String?            @unique
+  barcodeB          String?            @unique
+  barcodeBMinus     String?            @unique
+  // Status and notes
+  status            String             @default("Out of Stock")
+  notes             String?
+  // Timestamps
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  // Relations
+  stockEntries      StockEntry[]
   stockTransactions StockTransaction[]
   reservedStocks    ReservedStock[]
+}
+
+// New model for individual stock entries (when stock is added)
+model StockEntry {
+  id                Int                @id @default(autoincrement())
+  marbleId          Int
+  marble            Marble             @relation(fields: [marbleId], references: [id], onDelete: Cascade)
+  shade             String             // AA, A, B, B-
+  quantity          Float              @default(0)
+  slabSizeLength    Float?
+  slabSizeWidth     Float?
+  numberOfSlabs     Int?
+  notes             String?            // Stores slab info: "Slab Size: LENGTHxWIDTH, Number of Slabs: COUNT"
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 }
 
 model StockTransaction {
@@ -69,6 +100,7 @@ model ReservedStock {
   id                Int      @id @default(autoincrement())
   marbleId          Int
   marble            Marble   @relation(fields: [marbleId], references: [id], onDelete: Cascade)
+  shade             String   // AA, A, B, B-
   clientName        String
   clientPhone       String?
   clientEmail       String?

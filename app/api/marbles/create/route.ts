@@ -1,31 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-// Generate unique barcode: HMB-XXXXXX format
-async function generateUniqueBarcode(): Promise<string> {
-  let barcode: string = '';
-  let exists = true;
-  
-  while (exists) {
-    // Generate 6-digit random number
-    const randomNum = Math.floor(100000 + Math.random() * 900000);
-    barcode = `HMB-${randomNum}`;
-    
-    // Check if barcode already exists
-    const existing = await prisma.marble.findUnique({
-      where: { barcode },
-    });
-    
-    exists = existing !== null;
-  }
-  
-  return barcode;
-}
-
 // Generate unique barcode for a specific marble type and shade
 // Format: {PREFIX}-{SHADE}-{RANDOM}
 // Example: TRA-AA-1234
-// If 4-digit numbers are exhausted, extends to 5-digit: TRA-AA-12345
 async function generateUniqueBarcodeForShade(
   marbleType: string,
   shade: string
@@ -45,9 +23,16 @@ async function generateUniqueBarcodeForShade(
     const randomNum = Math.floor(minNum + Math.random() * (maxNum - minNum + 1));
     const barcode = `${prefix}-${shadeCode}-${randomNum}`;
     
-    // Check if barcode already exists
-    const existing = await prisma.marble.findUnique({
-      where: { barcode },
+    // Check if barcode already exists in any barcode field
+    const existing = await prisma.marble.findFirst({
+      where: {
+        OR: [
+          { barcodeAA: barcode },
+          { barcodeA: barcode },
+          { barcodeB: barcode },
+          { barcodeBMinus: barcode },
+        ],
+      },
     });
     
     if (existing === null) {
@@ -86,7 +71,7 @@ export async function POST(request: NextRequest) {
     } = await request.json();
 
     // Validation - marbleType is required
-    if (!marbleType) {
+    if (!marbleType || !marbleType.trim()) {
       return NextResponse.json(
         { error: 'Marble type is required' },
         { status: 400 }
@@ -102,6 +87,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate each shade has both prices
+    const shadeMap: Record<string, { costPrice: number; salePrice: number }> = {};
+    
     for (const shadeData of shades) {
       if (!shadeData.shade) {
         return NextResponse.json(
@@ -109,81 +96,117 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
-      if (shadeData.costPrice === undefined || shadeData.costPrice === null) {
+      
+      // Convert to numbers and validate
+      const costPrice = typeof shadeData.costPrice === 'string' 
+        ? parseFloat(shadeData.costPrice) 
+        : Number(shadeData.costPrice);
+      const salePrice = typeof shadeData.salePrice === 'string' 
+        ? parseFloat(shadeData.salePrice) 
+        : Number(shadeData.salePrice);
+      
+      if (isNaN(costPrice) || costPrice === null || costPrice === undefined) {
         return NextResponse.json(
-          { error: `Cost price is required for shade ${shadeData.shade}` },
+          { error: `Valid cost price is required for shade ${shadeData.shade}` },
           { status: 400 }
         );
       }
-      if (shadeData.salePrice === undefined || shadeData.salePrice === null) {
+      if (isNaN(salePrice) || salePrice === null || salePrice === undefined) {
         return NextResponse.json(
-          { error: `Sale price is required for shade ${shadeData.shade}` },
+          { error: `Valid sale price is required for shade ${shadeData.shade}` },
           { status: 400 }
         );
       }
-      if (shadeData.costPrice < 0 || shadeData.salePrice < 0) {
+      if (costPrice < 0 || salePrice < 0) {
         return NextResponse.json(
           { error: `Prices must be non-negative for shade ${shadeData.shade}` },
           { status: 400 }
         );
       }
+      
+      shadeMap[shadeData.shade] = { costPrice, salePrice };
     }
 
-    // Check if marble type already exists (check for any entry with this marble type)
-    const existingEntries = await prisma.marble.findMany({
+    // Check if marble type already exists
+    const existingMarble = await prisma.marble.findUnique({
       where: {
-        marbleType,
+        marbleType: marbleType.trim(),
       },
     });
 
-    // Prevent creation if any entry exists
-    if (existingEntries.length > 0) {
+    if (existingMarble) {
       return NextResponse.json(
         { error: 'Marble type already exists. Use "Add Stock" to add inventory for this type.' },
         { status: 400 }
       );
     }
 
-    // Create one marble entry for each shade with its pricing
-    const createdMarbles = [];
-    
-    for (const shadeData of shades) {
-      const { shade, costPrice, salePrice } = shadeData;
-      
-      // Generate unique barcode for this marble type and shade
-      const shadeBarcode = await generateUniqueBarcodeForShade(
-        marbleType,
-        shade
+    // Generate barcodes for each active shade
+    const barcodePromises: Promise<[string, string]>[] = [];
+    for (const shade of Object.keys(shadeMap)) {
+      barcodePromises.push(
+        generateUniqueBarcodeForShade(marbleType, shade).then(barcode => [shade, barcode] as [string, string])
       );
+    }
+    const barcodes = await Promise.all(barcodePromises);
+    const barcodeMap = Object.fromEntries(barcodes);
 
-      // Create marble entry for this shade
-      const marble = await prisma.marble.create({
-        data: {
-          marbleType,
-          color: shade, // Store shade in color field
-          quantity: 0, // No stock initially
-          unit: 'square feet', // Default unit
-          supplier: null,
-          batchNumber: null, // No batch number for template entries
-          barcode: shadeBarcode,
-          costPrice: parseFloat(costPrice),
-          salePrice: parseFloat(salePrice),
-          notes: notes || null,
-          status: 'Out of Stock', // No stock yet
-        },
-      });
+    // Build data object for Prisma
+    const marbleData: any = {
+      marbleType: marbleType.trim(),
+      shadeAA: shadeMap['AA'] ? true : false,
+      shadeA: shadeMap['A'] ? true : false,
+      shadeB: shadeMap['B'] ? true : false,
+      shadeBMinus: shadeMap['B-'] ? true : false,
+      status: 'Out of Stock', // No stock yet
+      notes: notes || null,
+    };
 
-      createdMarbles.push(marble);
+    // Set prices and barcodes for each active shade
+    if (shadeMap['AA']) {
+      marbleData.costPriceAA = shadeMap['AA'].costPrice;
+      marbleData.salePriceAA = shadeMap['AA'].salePrice;
+      marbleData.barcodeAA = barcodeMap['AA'];
+    }
+    if (shadeMap['A']) {
+      marbleData.costPriceA = shadeMap['A'].costPrice;
+      marbleData.salePriceA = shadeMap['A'].salePrice;
+      marbleData.barcodeA = barcodeMap['A'];
+    }
+    if (shadeMap['B']) {
+      marbleData.costPriceB = shadeMap['B'].costPrice;
+      marbleData.salePriceB = shadeMap['B'].salePrice;
+      marbleData.barcodeB = barcodeMap['B'];
+    }
+    if (shadeMap['B-']) {
+      marbleData.costPriceBMinus = shadeMap['B-'].costPrice;
+      marbleData.salePriceBMinus = shadeMap['B-'].salePrice;
+      marbleData.barcodeBMinus = barcodeMap['B-'];
     }
 
-    return NextResponse.json({ success: true, marbles: createdMarbles }, { status: 201 });
+    // Create single marble entry with all shade information
+    const marble = await prisma.marble.create({
+      data: marbleData,
+    });
+
+    // Return response with barcode information
+    const barcodeInfo = Object.entries(barcodeMap).map(([shade, barcode]) => ({
+      shade,
+      barcode,
+    }));
+
+    return NextResponse.json({ 
+      success: true, 
+      marble,
+      barcodes: barcodeInfo,
+    }, { status: 201 });
   } catch (error: any) {
     console.error('Error creating marble type:', error);
     
     // Handle Prisma unique constraint errors
     if (error.code === 'P2002') {
       return NextResponse.json(
-        { error: 'A marble entry with this barcode already exists. Please try again.' },
+        { error: 'A marble entry with this marble type or barcode already exists. Please try again.' },
         { status: 400 }
       );
     }
@@ -194,4 +217,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

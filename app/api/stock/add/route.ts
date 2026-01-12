@@ -1,124 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-// Generate unique barcode: HMB-XXXXXX format
-async function generateUniqueBarcode(): Promise<string> {
-  let barcode: string = '';
-  let exists = true;
-  
-  while (exists) {
-    // Generate 6-digit random number
-    const randomNum = Math.floor(100000 + Math.random() * 900000);
-    barcode = `HMB-${randomNum}`;
-    
-    // Check if barcode already exists
-    const existing = await prisma.marble.findUnique({
-      where: { barcode },
-    });
-    
-    exists = existing !== null;
-  }
-  
-  return barcode;
-}
-
-// Generate a unique batch number for a marble type
-// Example: TRAV-B1, TRAV-B2, etc.
-async function generateBatchNumber(marbleType: string): Promise<string> {
-  const prefix =
-    marbleType.replace(/\s+/g, '').toUpperCase().slice(0, 4) || 'HMB';
-
-  // Find ALL batches for this marble type (including those with batch numbers)
-  const existingBatches = await prisma.marble.findMany({
-    where: {
-      marbleType,
-      batchNumber: {
-        not: null,
-      },
-    },
-    select: {
-      batchNumber: true,
-    },
-    orderBy: {
-      createdAt: 'desc', // Get most recent first
-    },
-  });
-
-  // Extract batch numbers and find the highest number
-  let maxBatchNum = 0;
-  // Match patterns like: ONYX-B1, TRAV-B2, etc. (case insensitive)
-  const batchNumPattern = new RegExp(`^${prefix}-B(\\d+)$`, 'i');
-  
-  for (const batch of existingBatches) {
-    if (batch.batchNumber) {
-      const match = batch.batchNumber.match(batchNumPattern);
-      if (match) {
-        const num = parseInt(match[1], 10);
-        if (!isNaN(num) && num > maxBatchNum) {
-          maxBatchNum = num;
-        }
-      }
-    }
-  }
-
-  // Generate next batch number
-  const newBatchNum = maxBatchNum + 1;
-  const newBatchNumber = `${prefix}-B${newBatchNum}`;
-
-  // Double-check this batch number doesn't already exist (safety check)
-  const exists = await prisma.marble.findFirst({
-    where: {
-      marbleType,
-      batchNumber: newBatchNumber,
-    },
-  });
-
-  // If it somehow exists, increment until we find a unique one
-  if (exists) {
-    let counter = newBatchNum + 1;
-    let uniqueBatchNumber = `${prefix}-B${counter}`;
-    while (await prisma.marble.findFirst({
-      where: {
-        marbleType,
-        batchNumber: uniqueBatchNumber,
-      },
-    })) {
-      counter++;
-      uniqueBatchNumber = `${prefix}-B${counter}`;
-    }
-    return uniqueBatchNumber;
-  }
-
-  return newBatchNumber;
-}
-
 export async function POST(request: NextRequest) {
   try {
     const {
       marbleType,
-      color,
+      color, // Shade: AA, A, B, B-
       quantity,
       unit,
       supplier,
-      batchNumber,
-      costPrice,
-      salePrice,
       notes,
       barcode,
-      isNewItem, // Flag to indicate if this is a new item creation
+      slabSizeLength, // Direct field from frontend
+      slabSizeWidth, // Direct field from frontend
+      numberOfSlabs, // Direct field from frontend
     } = await request.json();
 
-    // Validation - shade (color) is now required
-    if (!marbleType || !quantity || !unit) {
+    // Validation
+    if (!marbleType || !color || !quantity) {
       return NextResponse.json(
-        { error: 'Missing required fields: marbleType, quantity, and unit are required' },
+        { error: 'Missing required fields: marbleType, shade (color), and quantity are required' },
         { status: 400 }
       );
     }
 
-    if (!color || color.trim() === '') {
+    const shade = color.trim();
+    if (!['AA', 'A', 'B', 'B-'].includes(shade)) {
       return NextResponse.json(
-        { error: 'Shade is required. Please select a shade (AA, A, B, or B-).' },
+        { error: 'Invalid shade. Must be one of: AA, A, B, B-' },
         { status: 400 }
       );
     }
@@ -130,99 +39,82 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Use color (shade) as the categorization field
-    const finalColor = color.trim();
+    // Parse slab information - prefer direct fields, fallback to parsing notes
+    let parsedSlabSizeLength: number | null = null;
+    let parsedSlabSizeWidth: number | null = null;
+    let parsedNumberOfSlabs: number | null = null;
 
-    // Generate barcode if this is a new item and no barcode provided
-    let finalBarcode = barcode;
-    if (isNewItem && (!finalBarcode || finalBarcode.trim() === '')) {
-      finalBarcode = await generateUniqueBarcode();
+    // First, try to use direct fields if provided
+    if (slabSizeLength !== undefined && slabSizeLength !== null && slabSizeWidth !== undefined && slabSizeWidth !== null) {
+      parsedSlabSizeLength = parseFloat(slabSizeLength.toString());
+      parsedSlabSizeWidth = parseFloat(slabSizeWidth.toString());
+    }
+    if (numberOfSlabs !== undefined && numberOfSlabs !== null) {
+      parsedNumberOfSlabs = parseInt(numberOfSlabs.toString(), 10);
     }
 
-    // Check if there's a template entry (created via "Add New Item" - no batch number)
-    // Also check for duplicate template entries and clean them up
-    const templateEntries = await prisma.marble.findMany({
-      where: {
-        marbleType,
-        batchNumber: null, // Template entries have no batch number
-      },
-      orderBy: {
-        createdAt: 'asc', // Keep the oldest one
-      },
-    });
-
-    let marble;
-
-    // Check if a marble entry with this shade already exists for this marble type
-    const existingShadeEntry = await prisma.marble.findFirst({
-      where: {
-        marbleType,
-        color: finalColor, // Shade is stored in color field
-        batchNumber: { not: null }, // Only check actual stock entries, not templates
-      },
-    });
-
-    if (existingShadeEntry) {
-      // Update existing shade entry by adding to quantity
-      marble = await prisma.marble.update({
-        where: { id: existingShadeEntry.id },
-        data: {
-          quantity: existingShadeEntry.quantity + quantity,
-          notes: notes || existingShadeEntry.notes,
-          updatedAt: new Date(),
-        },
-      });
-    } else if (templateEntries.length > 0) {
-      // Use the first (oldest) template entry
-      const templateEntry = templateEntries[0];
+    // If direct fields not provided, try parsing from notes
+    if ((!parsedSlabSizeLength || !parsedSlabSizeWidth || !parsedNumberOfSlabs) && notes) {
+      const slabSizeMatch = notes.match(/Slab Size:\s*([\d.]+)x([\d.]+)/i);
+      const slabsMatch = notes.match(/Number of Slabs:\s*(\d+)/i);
       
-      // Delete any duplicate template entries (keep only the first one)
-      if (templateEntries.length > 1) {
-        const duplicateIds = templateEntries.slice(1).map(entry => entry.id);
-        await prisma.marble.deleteMany({
-          where: {
-            id: {
-              in: duplicateIds,
-            },
-          },
-        });
+      if (slabSizeMatch && (!parsedSlabSizeLength || !parsedSlabSizeWidth)) {
+        parsedSlabSizeLength = parseFloat(slabSizeMatch[1]);
+        parsedSlabSizeWidth = parseFloat(slabSizeMatch[2]);
       }
-
-      // Convert template entry to first shade entry
-      marble = await prisma.marble.update({
-        where: { id: templateEntry.id },
-        data: {
-          color: finalColor, // Set shade
-          quantity: quantity, // Set quantity (was 0)
-          unit: unit, // Update unit
-          supplier: supplier || templateEntry.supplier,
-          batchNumber: null, // No batch number, using shade instead
-          barcode: finalBarcode || templateEntry.barcode,
-          costPrice: costPrice || templateEntry.costPrice,
-          salePrice: salePrice || templateEntry.salePrice,
-          notes: notes || templateEntry.notes,
-          status: 'In Stock', // Update status
-          updatedAt: new Date(),
-        },
-      });
-    } else {
-      // No template entry exists, create a NEW shade entry
-      marble = await prisma.marble.create({
-        data: {
-          marbleType,
-          color: finalColor, // Shade stored in color field
-          quantity,
-          unit,
-          supplier: supplier || null,
-          batchNumber: null, // No batch number, using shade for categorization
-          barcode: finalBarcode || null,
-          costPrice: costPrice || null,
-          salePrice: salePrice || null,
-          notes: notes || null,
-          status: 'In Stock',
-        },
-      });
+      if (slabsMatch && !parsedNumberOfSlabs) {
+        parsedNumberOfSlabs = parseInt(slabsMatch[1], 10);
+      }
     }
+
+    // Use parsed values
+    const finalSlabSizeLength = parsedSlabSizeLength && !isNaN(parsedSlabSizeLength) ? parsedSlabSizeLength : null;
+    const finalSlabSizeWidth = parsedSlabSizeWidth && !isNaN(parsedSlabSizeWidth) ? parsedSlabSizeWidth : null;
+    const finalNumberOfSlabs = parsedNumberOfSlabs && !isNaN(parsedNumberOfSlabs) ? parsedNumberOfSlabs : null;
+
+    // Find the marble type entry
+    const marble = await prisma.marble.findUnique({
+      where: {
+        marbleType: marbleType.trim(),
+      },
+      include: {
+        stockEntries: true,
+      },
+    });
+
+    if (!marble) {
+      return NextResponse.json(
+        { error: `Marble type "${marbleType}" not found. Please create it first using "Add New Item".` },
+        { status: 404 }
+      );
+    }
+
+    // Verify the shade is active for this marble type
+    let isShadeActive = false;
+    if (shade === 'AA' && marble.shadeAA) isShadeActive = true;
+    else if (shade === 'A' && marble.shadeA) isShadeActive = true;
+    else if (shade === 'B' && marble.shadeB) isShadeActive = true;
+    else if (shade === 'B-' && marble.shadeBMinus) isShadeActive = true;
+
+    if (!isShadeActive) {
+      return NextResponse.json(
+        { error: `Shade "${shade}" is not active for marble type "${marbleType}". Please activate it first.` },
+        { status: 400 }
+      );
+    }
+
+    // Create a new StockEntry for this stock addition
+    const stockEntry = await prisma.stockEntry.create({
+      data: {
+        marbleId: marble.id,
+        shade,
+        quantity,
+        slabSizeLength: finalSlabSizeLength,
+        slabSizeWidth: finalSlabSizeWidth,
+        numberOfSlabs: finalNumberOfSlabs,
+        notes: notes || null,
+      },
+    });
 
     // Create stock transaction
     await prisma.stockTransaction.create({
@@ -230,29 +122,36 @@ export async function POST(request: NextRequest) {
         marbleId: marble.id,
         type: 'IN',
         quantity,
-        notes: notes || null,
+        notes: notes || `Stock added for shade ${shade}`,
       },
     });
 
-    // Update status based on quantity
-    let status = 'In Stock';
-    if (marble.quantity < 100) {
-      status = 'Low Stock';
-    } else if (marble.quantity === 0) {
-      status = 'Out of Stock';
+    // Calculate total quantity for this marble type from all stock entries
+    const totalQuantity = marble.stockEntries.reduce((sum, e) => sum + e.quantity, 0) + quantity;
+
+    // Update marble status based on total quantity
+    let newStatus = 'In Stock';
+    if (totalQuantity === 0) {
+      newStatus = 'Out of Stock';
+    } else if (totalQuantity < 100) {
+      newStatus = 'Low Stock';
     }
 
-    if (marble.status !== status) {
-      marble = await prisma.marble.update({
+    if (marble.status !== newStatus) {
+      await prisma.marble.update({
         where: { id: marble.id },
-        data: { status },
+        data: { status: newStatus },
       });
     }
 
     return NextResponse.json({ 
       success: true, 
-      marble,
-      shade: finalColor // Return the shade that was used
+      stockEntry,
+      marble: {
+        ...marble,
+        status: newStatus,
+      },
+      shade,
     }, { status: 201 });
   } catch (error: any) {
     console.error('Error adding stock:', error);
@@ -261,7 +160,6 @@ export async function POST(request: NextRequest) {
     let errorMessage = 'Failed to add stock';
     
     if (error.code === 'P2002') {
-      // Unique constraint violation (e.g., duplicate barcode)
       errorMessage = 'A record with this information already exists. Please check for duplicates.';
     } else if (error.message) {
       errorMessage = error.message;
@@ -275,4 +173,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

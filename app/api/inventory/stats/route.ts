@@ -3,24 +3,66 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET() {
   try {
-    const marbles = await prisma.marble.findMany();
+    // Fetch all marbles with their stock entries
+    const marbles = await prisma.marble.findMany({
+      include: {
+        stockEntries: true,
+      },
+    });
 
-    const totalItems = marbles.length;
-    const totalQuantity = marbles.reduce((sum, m) => sum + m.quantity, 0);
-    const lowStockCount = marbles.filter((m) => m.status === 'Low Stock').length;
-    const outOfStockCount = marbles.filter((m) => m.status === 'Out of Stock').length;
-    const totalInventoryValue = marbles.reduce(
-      (sum, m) => sum + (m.quantity * (m.costPrice || 0)),
-      0
-    );
+    // Calculate stats from stock entries
+    let totalQuantity = 0;
+    let totalInventoryValue = 0;
+    const statusCounts = {
+      'In Stock': 0,
+      'Low Stock': 0,
+      'Out of Stock': 0,
+    };
+
+    for (const marble of marbles) {
+      // Calculate total quantity from stock entries
+      const marbleQuantity = marble.stockEntries.reduce((sum, entry) => sum + entry.quantity, 0);
+      totalQuantity += marbleQuantity;
+
+      // Calculate inventory value using cost prices
+      if (marble.shadeAA && marble.costPriceAA) {
+        const shadeQuantity = marble.stockEntries
+          .filter(e => e.shade === 'AA')
+          .reduce((sum, e) => sum + e.quantity, 0);
+        totalInventoryValue += shadeQuantity * marble.costPriceAA;
+      }
+      if (marble.shadeA && marble.costPriceA) {
+        const shadeQuantity = marble.stockEntries
+          .filter(e => e.shade === 'A')
+          .reduce((sum, e) => sum + e.quantity, 0);
+        totalInventoryValue += shadeQuantity * marble.costPriceA;
+      }
+      if (marble.shadeB && marble.costPriceB) {
+        const shadeQuantity = marble.stockEntries
+          .filter(e => e.shade === 'B')
+          .reduce((sum, e) => sum + e.quantity, 0);
+        totalInventoryValue += shadeQuantity * marble.costPriceB;
+      }
+      if (marble.shadeBMinus && marble.costPriceBMinus) {
+        const shadeQuantity = marble.stockEntries
+          .filter(e => e.shade === 'B-')
+          .reduce((sum, e) => sum + e.quantity, 0);
+        totalInventoryValue += shadeQuantity * marble.costPriceBMinus;
+      }
+
+      // Count status
+      if (marble.status in statusCounts) {
+        statusCounts[marble.status as keyof typeof statusCounts]++;
+      }
+    }
 
     return NextResponse.json({
       success: true,
       stats: {
-        totalItems,
+        totalItems: marbles.length,
         totalQuantity,
-        lowStockCount,
-        outOfStockCount,
+        lowStockCount: statusCounts['Low Stock'],
+        outOfStockCount: statusCounts['Out of Stock'],
         totalInventoryValue,
       },
     });
@@ -32,4 +74,3 @@ export async function GET() {
     );
   }
 }
-

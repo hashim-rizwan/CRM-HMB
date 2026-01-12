@@ -1,97 +1,74 @@
 # Database Migration Guide
 
-## Step 1: Update Prisma Schema
+## Important: Breaking Schema Change
 
-The Prisma schema has been updated to match the UI requirements. You need to create and run a migration.
+The database schema has been restructured. The `Marble` table now stores one entry per marble type with all shades in a single row, instead of one entry per shade.
 
-## Step 2: Run Database Migration
+## Current Situation
 
-```bash
-# Create a new migration
-npx prisma migrate dev --name update_schema
+You have **1 existing row** in the `Marble` table that needs to be handled before applying the migration.
 
-# This will:
-# 1. Create a new migration file
-# 2. Apply the migration to your database
-# 3. Regenerate the Prisma Client
-```
+## Options
 
-## Step 3: Verify Migration
+### Option 1: Start Fresh (Recommended if you have test data)
 
-After migration, verify that the database has been updated correctly:
+If you're okay with losing the existing data:
 
-```bash
-# Open Prisma Studio to view your database
-npx prisma studio
-```
+1. **Clear the existing data:**
+   ```sql
+   TRUNCATE TABLE "Marble" CASCADE;
+   ```
 
-## Step 4: Seed Initial Data (Optional)
+2. **Then run the migration:**
+   ```bash
+   npx prisma migrate dev --name restructure_marble_model
+   ```
 
-You may want to create a seed file to populate initial data. Create `prisma/seed.ts`:
+### Option 2: Migrate Existing Data
 
-```typescript
-import { PrismaClient } from '@prisma/client';
+If you need to preserve the existing data, you'll need to manually migrate it:
 
-const prisma = new PrismaClient();
+1. **First, check what data you have:**
+   ```sql
+   SELECT * FROM "Marble";
+   ```
 
-async function main() {
-  // Create a default admin user
-  await prisma.user.create({
-    data: {
-      username: 'admin',
-      password: 'admin123', // In production, hash this!
-      fullName: 'Admin User',
-      email: 'admin@marblefactory.com',
-      role: 'Admin',
-      status: 'Active',
-    },
-  });
+2. **Create a migration script** that:
+   - Groups entries by `marbleType`
+   - For each shade (stored in `color` field), sets the corresponding shade flag
+   - Moves `costPrice`/`salePrice` to the appropriate shade columns
+   - Moves `barcode` to the appropriate shade barcode column
 
-  console.log('Seed data created successfully');
-}
+3. **Then run the Prisma migration**
 
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
-```
+### Option 3: Export and Re-import
 
-Then add to `package.json`:
-```json
-{
-  "prisma": {
-    "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
-  }
-}
-```
+1. **Export existing data:**
+   ```bash
+   npx prisma db execute --stdin < export_data.sql
+   ```
 
-Run seed:
-```bash
-npx prisma db seed
-```
+2. **Clear and migrate:**
+   ```bash
+   npx prisma migrate dev --name restructure_marble_model
+   ```
 
-## Important Notes
+3. **Re-import data in new format**
 
-1. **Password Hashing**: The current implementation stores passwords in plain text. In production, you MUST hash passwords using bcrypt or similar.
+## Recommended Approach
 
-2. **Database Location**: The database file is located at `prisma/inventory.db` (SQLite).
+Since you only have **1 row** of data, I recommend **Option 1** (start fresh) unless that data is critical.
 
-3. **Backup**: Before running migrations, backup your existing database if you have important data.
+## After Migration
 
-## API Endpoints Created
+Once the migration is complete, you'll need to:
+1. Update all API endpoints that query the `Marble` table
+2. Update the inventory dashboard to work with the new structure
+3. Update the "Add Stock" functionality to create `StockEntry` records instead of updating `Marble.quantity`
 
-- `POST /api/stock/add` - Add stock
-- `POST /api/stock/remove` - Remove stock
-- `GET /api/inventory` - Get all inventory (with optional search query)
-- `GET /api/inventory/stats` - Get inventory statistics
-- `GET /api/users` - Get all users
-- `POST /api/users` - Create new user
-- `PUT /api/users/[id]` - Update user
-- `PATCH /api/users/[id]` - Update user status
-- `GET /api/notifications` - Get all notifications
-- `PATCH /api/notifications` - Update notification read status
+## Next Steps
 
+1. Decide which option to use
+2. If Option 1: Run `TRUNCATE TABLE "Marble" CASCADE;` in your database
+3. Then run: `npx prisma migrate dev --name restructure_marble_model`
+4. Answer 'y' when prompted

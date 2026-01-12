@@ -1,167 +1,146 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-// Parse slab information from notes field
-// Format: "Slab Size: LENGTHxWIDTH, Number of Slabs: COUNT"
-function parseSlabInfo(notes: string | null): { length: number; width: number; numberOfSlabs: number } | null {
-  if (!notes) return null;
-  
-  try {
-    const slabSizeMatch = notes.match(/Slab Size:\s*([\d.]+)x([\d.]+)/i);
-    const slabsMatch = notes.match(/Number of Slabs:\s*(\d+)/i);
-    
-    if (slabSizeMatch && slabsMatch) {
-      return {
-        length: parseFloat(slabSizeMatch[1]),
-        width: parseFloat(slabSizeMatch[2]),
-        numberOfSlabs: parseInt(slabsMatch[1], 10),
-      };
-    }
-  } catch (error) {
-    console.error('Error parsing slab info:', error);
-  }
-  
-  return null;
-}
-
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const search = searchParams.get('search') || '';
 
-    // Fetch all marbles with their individual entries
-    const rawMarbles = await prisma.marble.findMany({
-      orderBy: [
-        { marbleType: 'asc' },
-        { color: 'asc' },
-        { createdAt: 'asc' },
-      ],
+    // Fetch all marble types (one entry per marble type in new schema)
+    const marbles = await prisma.marble.findMany({
+      include: {
+        stockEntries: true, // Include all stock entries for this marble type
+      },
+      orderBy: {
+        marbleType: 'asc',
+      },
     });
 
-    // Group by marble type, then by shade, keeping all individual entries
-    const marbleTypesMap = new Map<string, {
-      id: number; // Use the oldest entry's ID as the consistent ID
-      shades: Map<string, {
+    // Process each marble type
+    const marbleTypes = marbles.map((marble) => {
+      // Get active shades for this marble type
+      const activeShades: string[] = [];
+      if (marble.shadeAA) activeShades.push('AA');
+      if (marble.shadeA) activeShades.push('A');
+      if (marble.shadeB) activeShades.push('B');
+      if (marble.shadeBMinus) activeShades.push('B-');
+
+      // Group stock entries by shade
+      const shadeMap = new Map<string, {
         entries: Array<{
           id: number;
           quantity: number;
-          unit: string | null;
-          costPrice: number | null;
-          salePrice: number | null;
-          status: string;
+          slabSizeLength: number | null;
+          slabSizeWidth: number | null;
+          numberOfSlabs: number | null;
           notes: string | null;
-          slabInfo: { length: number; width: number; numberOfSlabs: number } | null;
-          updatedAt: Date;
-          createdAt: Date;
         }>;
+        totalQuantity: number;
         costPrice: number | null;
         salePrice: number | null;
-        totalQuantity: number;
-        shadeStatus: string;
         lastUpdated: Date;
-      }>;
-      totalQuantity: number;
-      overallStatus: string;
-      lastUpdated: Date;
-    }>();
+      }>();
 
-    for (const marble of rawMarbles) {
-      const marbleType = marble.marbleType;
-      const shade = marble.color;
+      // Process stock entries by shade
+      for (const entry of marble.stockEntries) {
+        const shade = entry.shade;
+        
+        if (!shadeMap.has(shade)) {
+          // Get prices for this shade from the marble record
+          let costPrice: number | null = null;
+          let salePrice: number | null = null;
+          
+          if (shade === 'AA') {
+            costPrice = marble.costPriceAA;
+            salePrice = marble.salePriceAA;
+          } else if (shade === 'A') {
+            costPrice = marble.costPriceA;
+            salePrice = marble.salePriceA;
+          } else if (shade === 'B') {
+            costPrice = marble.costPriceB;
+            salePrice = marble.salePriceB;
+          } else if (shade === 'B-') {
+            costPrice = marble.costPriceBMinus;
+            salePrice = marble.salePriceBMinus;
+          }
 
-      if (!marbleTypesMap.has(marbleType)) {
-        marbleTypesMap.set(marbleType, {
-          id: marble.id, // First entry becomes the ID
-          shades: new Map(),
-          totalQuantity: 0,
-          overallStatus: 'In Stock',
-          lastUpdated: marble.updatedAt,
+          shadeMap.set(shade, {
+            entries: [],
+            totalQuantity: 0,
+            costPrice,
+            salePrice,
+            lastUpdated: entry.updatedAt,
+          });
+        }
+
+        const shadeData = shadeMap.get(shade)!;
+        shadeData.entries.push({
+          id: entry.id,
+          quantity: entry.quantity,
+          slabSizeLength: entry.slabSizeLength,
+          slabSizeWidth: entry.slabSizeWidth,
+          numberOfSlabs: entry.numberOfSlabs,
+          notes: entry.notes,
         });
+        shadeData.totalQuantity += entry.quantity;
+        
+        if (entry.updatedAt > shadeData.lastUpdated) {
+          shadeData.lastUpdated = entry.updatedAt;
+        }
       }
 
-      const marbleTypeData = marbleTypesMap.get(marbleType)!;
-      
-      if (!marbleTypeData.shades.has(shade)) {
-        marbleTypeData.shades.set(shade, {
-          entries: [],
-          costPrice: marble.costPrice,
-          salePrice: marble.salePrice,
-          totalQuantity: 0,
-          shadeStatus: marble.status,
-          lastUpdated: marble.updatedAt,
-        });
-      }
+      // Convert shade map to array
+      const shades = Array.from(shadeMap.entries()).map(([shade, shadeData]) => {
+        // Calculate shade status based on total quantity
+        let shadeStatus = 'Out of Stock';
+        if (shadeData.totalQuantity > 100) {
+          shadeStatus = 'In Stock';
+        } else if (shadeData.totalQuantity > 0) {
+          shadeStatus = 'Low Stock';
+        }
 
-      const shadeData = marbleTypeData.shades.get(shade)!;
-      shadeData.entries.push({
-        id: marble.id,
-        quantity: marble.quantity,
-        unit: marble.unit,
-        costPrice: marble.costPrice,
-        salePrice: marble.salePrice,
-        status: marble.status,
-        notes: marble.notes,
-        slabInfo: parseSlabInfo(marble.notes),
-        updatedAt: marble.updatedAt,
-        createdAt: marble.createdAt,
+        return {
+          shade,
+          costPrice: shadeData.costPrice,
+          salePrice: shadeData.salePrice,
+          totalQuantity: shadeData.totalQuantity,
+          shadeStatus,
+          lastUpdated: shadeData.lastUpdated.toISOString(),
+          entries: shadeData.entries.map(e => ({
+            id: e.id,
+            quantity: e.quantity,
+            unit: 'sq ft',
+            slabInfo: (e.slabSizeLength && e.slabSizeWidth && e.numberOfSlabs) ? {
+              length: e.slabSizeLength,
+              width: e.slabSizeWidth,
+              numberOfSlabs: e.numberOfSlabs,
+            } : null,
+            notes: e.notes,
+          })),
+        };
       });
 
-      // Update shade totals
-      shadeData.totalQuantity += marble.quantity;
-      if (marble.updatedAt > shadeData.lastUpdated) {
-        shadeData.lastUpdated = marble.updatedAt;
-        shadeData.costPrice = marble.costPrice;
-        shadeData.salePrice = marble.salePrice;
-        shadeData.shadeStatus = marble.status;
-      }
-
-      // Update marble type totals
-      marbleTypeData.totalQuantity += marble.quantity;
-      if (marble.updatedAt > marbleTypeData.lastUpdated) {
-        marbleTypeData.lastUpdated = marble.updatedAt;
-      }
-    }
-
-    // Calculate overall status for each marble type
-    for (const [marbleType, data] of marbleTypesMap.entries()) {
-      const shades = Array.from(data.shades.values());
+      // Calculate overall totals and status
+      const totalQuantity = shades.reduce((sum, s) => sum + s.totalQuantity, 0);
       const hasLowStock = shades.some(s => s.shadeStatus === 'Low Stock');
       const hasOutOfStock = shades.some(s => s.shadeStatus === 'Out of Stock');
       
-      if (hasOutOfStock && data.totalQuantity === 0) {
-        data.overallStatus = 'Out of Stock';
+      let overallStatus = marble.status;
+      if (totalQuantity === 0) {
+        overallStatus = 'Out of Stock';
       } else if (hasLowStock || hasOutOfStock) {
-        data.overallStatus = 'Low Stock';
-      } else {
-        data.overallStatus = 'In Stock';
+        overallStatus = 'Low Stock';
+      } else if (totalQuantity > 100) {
+        overallStatus = 'In Stock';
       }
-    }
-
-    // Convert to array format
-    const marbleTypes = Array.from(marbleTypesMap.entries()).map(([marbleType, data]) => {
-      const shades = Array.from(data.shades.entries()).map(([shade, shadeData]) => ({
-        shade,
-        costPrice: shadeData.costPrice,
-        salePrice: shadeData.salePrice,
-        totalQuantity: shadeData.totalQuantity,
-        shadeStatus: shadeData.shadeStatus,
-        lastUpdated: shadeData.lastUpdated.toISOString(),
-        entries: shadeData.entries.map(e => ({
-          id: e.id,
-          quantity: e.quantity,
-          unit: e.unit,
-          slabInfo: e.slabInfo,
-          notes: e.notes,
-        })),
-      }));
 
       return {
-        id: data.id,
-        marbleType,
-        availableShades: shades.map(s => s.shade).sort(),
-        totalQuantity: data.totalQuantity,
-        overallStatus: data.overallStatus,
-        lastUpdated: data.lastUpdated.toISOString(),
+        id: marble.id,
+        marbleType: marble.marbleType,
+        availableShades: activeShades,
+        totalQuantity,
+        overallStatus,
+        lastUpdated: marble.updatedAt.toISOString(),
         shades: shades.sort((a, b) => a.shade.localeCompare(b.shade)),
       };
     });
@@ -181,10 +160,10 @@ export async function GET(request: NextRequest) {
       success: true,
       marbleTypes: filteredMarbleTypes,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching grouped inventory:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch inventory' },
+      { error: `Failed to fetch inventory: ${error.message}` },
       { status: 500 }
     );
   }
