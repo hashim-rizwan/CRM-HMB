@@ -317,7 +317,7 @@ export function BarcodeManagement() {
     let barcodeHTML = '<div class="print-all-barcodes-wrapper">';
     
     barcodes.forEach((item, index) => {
-      const shade = extractShade(item.barcodeValue);
+      const shade = extractShade(item);
       barcodeHTML += `
         <div class="print-barcode-item" data-barcode="${item.barcodeValue}" data-index="${index}">
           <div class="print-marble-name">${marbleType} - ${shade}</div>
