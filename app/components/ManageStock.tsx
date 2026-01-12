@@ -533,7 +533,8 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
               </div>
               )}
 
-              {/* Sale Price */}
+              {/* Sale Price - Admin only */}
+              {userRole === 'Admin' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Sale Price
@@ -552,6 +553,7 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
                   />
                 </div>
               </div>
+              )}
             </div>
 
             {/* Notes */}
@@ -775,7 +777,8 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
               </div>
               )}
 
-              {/* Sale Price */}
+              {/* Sale Price - Admin only */}
+              {userRole === 'Admin' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Sale Price
@@ -794,6 +797,7 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
                   />
                 </div>
               </div>
+              )}
             </div>
 
             {/* Notes */}

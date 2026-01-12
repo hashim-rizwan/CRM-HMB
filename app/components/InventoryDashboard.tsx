@@ -294,12 +294,14 @@ export function InventoryDashboard({ searchQuery = '', userRole = 'Staff' }: Inv
                   Cost Price {getSortIcon('costPrice')}
                 </th>
                 )}
+                {userRole === 'Admin' && (
                 <th 
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                   onClick={() => handleSort('salePrice')}
                 >
                   Sale Price {getSortIcon('salePrice')}
                 </th>
+                )}
                 <th 
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                   onClick={() => handleSort('location')}
@@ -353,7 +355,9 @@ export function InventoryDashboard({ searchQuery = '', userRole = 'Staff' }: Inv
                         {userRole === 'Admin' && (
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{`PKR ${item.costPrice}/${item.unit}`}</td>
                         )}
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#16A34A] dark:text-green-400">{`PKR ${item.salePrice}/${item.unit}`}</td>
+                        {userRole === 'Admin' && (
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#16A34A] dark:text-green-400">{`PKR ${item.salePrice}/${item.unit}`}</td>
+                        )}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">{item.location}</td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(item.status)}`}>
@@ -365,7 +369,7 @@ export function InventoryDashboard({ searchQuery = '', userRole = 'Staff' }: Inv
                       {/* Expanded Batch Details Row */}
                       {isExpanded && (
                         <tr className="bg-gray-50 dark:bg-gray-800/50">
-                          <td colSpan={userRole === 'Admin' ? 10 : 9} className="px-6 py-4">
+                          <td colSpan={userRole === 'Admin' ? 10 : 8} className="px-6 py-4">
                             <div className="pl-8">
                               <h4 className="text-sm font-semibold text-[#1F2937] dark:text-white mb-3">
                                 Batch Details for {item.marbleType}
@@ -396,7 +400,9 @@ export function InventoryDashboard({ searchQuery = '', userRole = 'Staff' }: Inv
                                         {userRole === 'Admin' && (
                                           <th className="px-4 py-2 text-left font-medium text-gray-700 dark:text-gray-300">Cost Price</th>
                                         )}
-                                        <th className="px-4 py-2 text-left font-medium text-gray-700 dark:text-gray-300">Sale Price</th>
+                                        {userRole === 'Admin' && (
+                                          <th className="px-4 py-2 text-left font-medium text-gray-700 dark:text-gray-300">Sale Price</th>
+                                        )}
                                         <th className="px-4 py-2 text-left font-medium text-gray-700 dark:text-gray-300">Status</th>
                                       </tr>
                                     </thead>
@@ -426,9 +432,11 @@ export function InventoryDashboard({ searchQuery = '', userRole = 'Staff' }: Inv
                                               {batch.costPrice != null ? `PKR ${batch.costPrice.toLocaleString()}/${batch.unit}` : '-'}
                                             </td>
                                           )}
-                                          <td className="px-4 py-2 whitespace-nowrap text-gray-700 dark:text-gray-200">
-                                            {batch.salePrice != null ? `PKR ${batch.salePrice.toLocaleString()}/${batch.unit}` : '-'}
-                                          </td>
+                                          {userRole === 'Admin' && (
+                                            <td className="px-4 py-2 whitespace-nowrap text-gray-700 dark:text-gray-200">
+                                              {batch.salePrice != null ? `PKR ${batch.salePrice.toLocaleString()}/${batch.unit}` : '-'}
+                                            </td>
+                                          )}
                                           <td className="px-4 py-2 whitespace-nowrap">
                                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(batch.status)}`}>
                                               {batch.status}
