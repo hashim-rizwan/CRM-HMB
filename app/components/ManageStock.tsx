@@ -172,20 +172,31 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
       return;
     }
     
-    // Handle shade pricing fields (format: "shade-field" e.g., "AA-costPrice", "A-salePrice")
+    // Handle shade pricing fields (format: "shade-field" e.g., "AA-costPrice", "A-salePrice", "B--salePrice")
+    // Use lastIndexOf to handle shades with hyphens like "B-"
     if (name.includes('-') && !name.startsWith('shade-')) {
-      const [shade, field] = name.split('-');
-      setNewItemFormData({
-        ...newItemFormData,
-        shades: {
-          ...newItemFormData.shades,
-          [shade]: {
-            ...newItemFormData.shades[shade as keyof typeof newItemFormData.shades],
-            [field]: value,
+      const lastDashIndex = name.lastIndexOf('-');
+      const shade = name.substring(0, lastDashIndex);
+      const field = name.substring(lastDashIndex + 1);
+      
+      // Validate that this is a shade pricing field (field should be 'costPrice' or 'salePrice')
+      if (field === 'costPrice' || field === 'salePrice') {
+        setNewItemFormData({
+          ...newItemFormData,
+          shades: {
+            ...newItemFormData.shades,
+            [shade]: {
+              ...newItemFormData.shades[shade as keyof typeof newItemFormData.shades],
+              [field]: value,
+            },
           },
-        },
-      });
-    } else {
+        });
+        return;
+      }
+    }
+    
+    // Handle regular fields
+    {
       setNewItemFormData({
         ...newItemFormData,
         [name]: value,
