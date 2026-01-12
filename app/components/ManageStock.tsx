@@ -55,19 +55,22 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
     setSuccessMessage(null);
 
     try {
-      await stockAPI.add({
+      const response = await stockAPI.add({
         marbleType: addFormData.marbleType,
         color: '', // Color will be derived from marble type in API
         quantity: parseFloat(addFormData.quantity),
         unit: addFormData.unit,
         location: addFormData.location,
         supplier: addFormData.supplier || undefined,
-        batchNumber: addFormData.batchNumber || undefined,
+        batchNumber: addFormData.batchNumber || undefined, // API will auto-generate if not provided
         costPrice: addFormData.costPrice ? parseFloat(addFormData.costPrice) : undefined,
         salePrice: addFormData.salePrice ? parseFloat(addFormData.salePrice) : undefined,
         notes: addFormData.notes || undefined,
         barcode: scannedBarcode || undefined,
       });
+
+      // Update batch number from API response if provided
+      const finalBatchNumber = response.batchNumber || addFormData.batchNumber;
 
       setAddFormData({
         marbleType: '',
@@ -83,10 +86,10 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
       setScannedBarcode('');
       
       // Refresh inventory data after adding stock
-      const response = await inventoryAPI.getAll();
-      setInventory(response.marbles || []);
+      const inventoryResponse = await inventoryAPI.getAll();
+      setInventory(inventoryResponse.marbles || []);
       
-      setSuccessMessage('Stock added successfully!');
+      setSuccessMessage(`Stock added successfully!${finalBatchNumber ? ` Batch: ${finalBatchNumber}` : ''}`);
       setTimeout(() => setSuccessMessage(null), 5000);
     } catch (err: any) {
       setError(err.message || 'Failed to add stock');
@@ -131,11 +134,38 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
     }
   };
 
+  // Generate batch number based on marble type
+  const generateBatchNumber = (marbleType: string): string => {
+    if (!marbleType || marbleType.trim() === '') return '';
+    
+    // Get count of existing batches for this marble type
+    const existingBatches = inventory.filter(
+      (marble: any) => 
+        marble.marbleType === marbleType && 
+        marble.batchNumber && 
+        marble.batchNumber.trim() !== ''
+    );
+    
+    const prefix = marbleType
+      .replace(/\s+/g, '')
+      .toUpperCase()
+      .slice(0, 4) || 'HMB';
+    
+    return `${prefix}-B${existingBatches.length + 1}`;
+  };
+
   const handleAddChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setAddFormData({
+    const newData = {
       ...addFormData,
       [e.target.name]: e.target.value,
-    });
+    };
+    
+    // Auto-generate batch number when marble type changes
+    if (e.target.name === 'marbleType' && e.target.value.trim() !== '') {
+      newData.batchNumber = generateBatchNumber(e.target.value);
+    }
+    
+    setAddFormData(newData);
   };
 
   const handleRemoveChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -305,13 +335,14 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
         
         if (activeTab === 'add') {
           // Auto-populate Add Stock form
+          const newBatchNumber = generateBatchNumber(marble.marbleType);
           setAddFormData({
             ...addFormData,
             marbleType: marble.marbleType,
             unit: marble.unit,
             location: marble.location,
             supplier: marble.supplier || '',
-            batchNumber: marble.batchNumber || '',
+            batchNumber: newBatchNumber, // Auto-generate new batch number
             costPrice: marble.costPrice?.toString() || '',
             salePrice: marble.salePrice?.toString() || '',
           });
@@ -706,16 +737,20 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
               {/* Batch Number */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Batch Number
+                  Batch Number <span className="text-xs text-gray-500 dark:text-gray-400">(Auto-generated)</span>
                 </label>
                 <input
                   type="text"
                   name="batchNumber"
                   value={addFormData.batchNumber}
-                  onChange={handleAddChange}
-                  placeholder="e.g., BATCH-2026-001"
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+                  readOnly
+                  disabled
+                  placeholder="Will be auto-generated"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 cursor-not-allowed"
                 />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Batch number is automatically generated when you select a marble type
+                </p>
               </div>
 
               {/* Cost Price - Admin only */}

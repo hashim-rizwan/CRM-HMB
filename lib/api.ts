@@ -45,7 +45,7 @@ export const stockAPI = {
     notes?: string;
     barcode?: string;
     isNewItem?: boolean;
-  }) => apiRequest<{ success: boolean; marble: any }>('/stock/add', {
+  }) => apiRequest<{ success: boolean; marble: any; batchNumber?: string }>('/stock/add', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
@@ -91,6 +91,12 @@ export const inventoryAPI = {
 
   getByBarcode: (barcode: string) => {
     return apiRequest<{ success: boolean; marble: any }>(`/inventory/barcode?barcode=${encodeURIComponent(barcode)}`);
+  },
+
+  getDetailsByType: (marbleType: string) => {
+    return apiRequest<{ success: boolean; batches: any[] }>(
+      `/inventory/details?marbleType=${encodeURIComponent(marbleType)}`
+    );
   },
 
   getStats: () =>

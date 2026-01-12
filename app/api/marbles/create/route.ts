@@ -42,16 +42,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if marble type already exists (by type only, not location)
-    const existingMarble = await prisma.marble.findFirst({
+    // Check if marble type already exists
+    // Only prevent creation if there's already a template entry (batchNumber is null)
+    // OR if there are actual batches (with batch numbers)
+    const existingTemplate = await prisma.marble.findFirst({
       where: {
         marbleType,
+        batchNumber: null, // Template entry
       },
     });
 
-    if (existingMarble) {
+    const existingBatches = await prisma.marble.findFirst({
+      where: {
+        marbleType,
+        batchNumber: {
+          not: null, // Has batches
+        },
+      },
+    });
+
+    if (existingTemplate || existingBatches) {
       return NextResponse.json(
-        { error: 'Marble type already exists in database' },
+        { error: 'Marble type already exists. Use "Add Stock" to add inventory for this type.' },
         { status: 400 }
       );
     }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react';
-import { Package, TrendingUp, AlertTriangle, CheckCircle, ArrowUp, ArrowDown, Eye, EyeOff } from 'lucide-react';
+import { Package, TrendingUp, AlertTriangle, CheckCircle, ArrowUp, ArrowDown, Eye, EyeOff, ChevronDown, ChevronRight } from 'lucide-react';
 import { inventoryAPI } from '@/lib/api';
 
 interface InventoryItem {
@@ -67,6 +67,8 @@ export function InventoryDashboard({ searchQuery = '', userRole = 'Staff' }: Inv
   const [sortBy, setSortBy] = useState<string>('updatedAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [hideOutOfStock, setHideOutOfStock] = useState<boolean>(false);
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [batchDetailsMap, setBatchDetailsMap] = useState<Record<string, { batches: any[]; loading: boolean; error: string | null }>>({});
 
   useEffect(() => {
     fetchInventory();
@@ -127,6 +129,50 @@ export function InventoryDashboard({ searchQuery = '', userRole = 'Staff' }: Inv
       setStats(response.stats);
     } catch (err: any) {
       console.error('Error fetching stats:', err);
+    }
+  };
+
+  const handleRowClick = async (item: InventoryItem) => {
+    const isExpanded = expandedRows.has(item.marbleType);
+    
+    if (isExpanded) {
+      // Collapse: remove from expanded set
+      const newExpanded = new Set(expandedRows);
+      newExpanded.delete(item.marbleType);
+      setExpandedRows(newExpanded);
+    } else {
+      // Expand: add to expanded set and fetch details if not already loaded
+      const newExpanded = new Set(expandedRows);
+      newExpanded.add(item.marbleType);
+      setExpandedRows(newExpanded);
+
+      // Only fetch if we don't already have the data
+      if (!batchDetailsMap[item.marbleType]) {
+        setBatchDetailsMap(prev => ({
+          ...prev,
+          [item.marbleType]: { batches: [], loading: true, error: null }
+        }));
+
+        try {
+          const response = await inventoryAPI.getDetailsByType(item.marbleType);
+          // Use the main row's ID as the consistent ID for all batches
+          const mainRowId = parseInt(item.id);
+          const batchesWithMainId = (response.batches || []).map((batch: any) => ({
+            ...batch,
+            consistentId: mainRowId, // Override with the main inventory row's ID
+          }));
+          setBatchDetailsMap(prev => ({
+            ...prev,
+            [item.marbleType]: { batches: batchesWithMainId, loading: false, error: null }
+          }));
+        } catch (err: any) {
+          console.error('Error fetching batch details:', err);
+          setBatchDetailsMap(prev => ({
+            ...prev,
+            [item.marbleType]: { batches: [], loading: false, error: err.message || 'Failed to load batch details' }
+          }));
+        }
+      }
     }
   };
 
@@ -213,6 +259,9 @@ export function InventoryDashboard({ searchQuery = '', userRole = 'Staff' }: Inv
           <table className="w-full">
             <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
               <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-8">
+                  {/* Expand/Collapse column */}
+                </th>
                 <th 
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                   onClick={() => handleSort('id')}
@@ -274,30 +323,130 @@ export function InventoryDashboard({ searchQuery = '', userRole = 'Staff' }: Inv
             <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
               {filteredInventory.length === 0 ? (
                 <tr>
-                  <td colSpan={userRole === 'Admin' ? 9 : 8} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                  <td colSpan={userRole === 'Admin' ? 10 : 9} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
                     No inventory items found matching "{searchQuery}"
                   </td>
                 </tr>
               ) : (
-                filteredInventory.map((item) => (
-                <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1F2937] dark:text-white">{item.id}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{item.marbleType}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">{item.color}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{item.quantity.toLocaleString()} {item.unit}</td>
-                  {userRole === 'Admin' && (
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{`PKR ${item.costPrice}/${item.unit}`}</td>
-                  )}
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#16A34A] dark:text-green-400">{`PKR ${item.salePrice}/${item.unit}`}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">{item.location}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(item.status)}`}>
-                      {item.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{item.lastUpdated}</td>
-                </tr>
-                ))
+                filteredInventory.map((item) => {
+                  const isExpanded = expandedRows.has(item.marbleType);
+                  const batchData = batchDetailsMap[item.marbleType];
+                  
+                  return (
+                    <>
+                      <tr
+                        key={item.id}
+                        className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                        onClick={() => handleRowClick(item)}
+                      >
+                        <td className="px-2 py-4 whitespace-nowrap">
+                          {isExpanded ? (
+                            <ChevronDown className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                          ) : (
+                            <ChevronRight className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1F2937] dark:text-white">{item.id}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{item.marbleType}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">{item.color}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{item.quantity.toLocaleString()} {item.unit}</td>
+                        {userRole === 'Admin' && (
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{`PKR ${item.costPrice}/${item.unit}`}</td>
+                        )}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#16A34A] dark:text-green-400">{`PKR ${item.salePrice}/${item.unit}`}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">{item.location}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(item.status)}`}>
+                            {item.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{item.lastUpdated}</td>
+                      </tr>
+                      {/* Expanded Batch Details Row */}
+                      {isExpanded && (
+                        <tr className="bg-gray-50 dark:bg-gray-800/50">
+                          <td colSpan={userRole === 'Admin' ? 10 : 9} className="px-6 py-4">
+                            <div className="pl-8">
+                              <h4 className="text-sm font-semibold text-[#1F2937] dark:text-white mb-3">
+                                Batch Details for {item.marbleType}
+                              </h4>
+                              {batchData?.loading ? (
+                                <div className="text-sm text-gray-600 dark:text-gray-400 py-4">
+                                  Loading batch details...
+                                </div>
+                              ) : batchData?.error ? (
+                                <div className="text-sm text-red-600 dark:text-red-400 py-4">
+                                  {batchData.error}
+                                </div>
+                              ) : !batchData?.batches || batchData.batches.length === 0 ? (
+                                <div className="text-sm text-gray-600 dark:text-gray-400 py-4">
+                                  No batch records found for this marble type.
+                                </div>
+                              ) : (
+                                <div className="overflow-x-auto">
+                                  <table className="w-full text-sm border border-gray-200 dark:border-gray-700 rounded-lg">
+                                    <thead className="bg-gray-100 dark:bg-gray-700">
+                                      <tr>
+                                        <th className="px-4 py-2 text-left font-medium text-gray-700 dark:text-gray-300">ID</th>
+                                        <th className="px-4 py-2 text-left font-medium text-gray-700 dark:text-gray-300">Batch #</th>
+                                        <th className="px-4 py-2 text-left font-medium text-gray-700 dark:text-gray-300">Supplier</th>
+                                        <th className="px-4 py-2 text-left font-medium text-gray-700 dark:text-gray-300">Location</th>
+                                        <th className="px-4 py-2 text-left font-medium text-gray-700 dark:text-gray-300">Quantity</th>
+                                        <th className="px-4 py-2 text-left font-medium text-gray-700 dark:text-gray-300">Unit</th>
+                                        {userRole === 'Admin' && (
+                                          <th className="px-4 py-2 text-left font-medium text-gray-700 dark:text-gray-300">Cost Price</th>
+                                        )}
+                                        <th className="px-4 py-2 text-left font-medium text-gray-700 dark:text-gray-300">Sale Price</th>
+                                        <th className="px-4 py-2 text-left font-medium text-gray-700 dark:text-gray-300">Status</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
+                                      {batchData.batches.map((batch: any) => (
+                                        <tr key={batch.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                                          <td className="px-4 py-2 whitespace-nowrap text-gray-700 dark:text-gray-200">
+                                            {batch.consistentId || batch.id}
+                                          </td>
+                                          <td className="px-4 py-2 whitespace-nowrap text-gray-700 dark:text-gray-200">
+                                            {batch.batchNumber || '-'}
+                                          </td>
+                                          <td className="px-4 py-2 whitespace-nowrap text-gray-700 dark:text-gray-200">
+                                            {batch.supplier || '-'}
+                                          </td>
+                                          <td className="px-4 py-2 whitespace-nowrap text-gray-700 dark:text-gray-200">
+                                            {batch.location}
+                                          </td>
+                                          <td className="px-4 py-2 whitespace-nowrap text-gray-700 dark:text-gray-200">
+                                            {batch.quantity.toLocaleString()}
+                                          </td>
+                                          <td className="px-4 py-2 whitespace-nowrap text-gray-700 dark:text-gray-200">
+                                            {batch.unit}
+                                          </td>
+                                          {userRole === 'Admin' && (
+                                            <td className="px-4 py-2 whitespace-nowrap text-gray-700 dark:text-gray-200">
+                                              {batch.costPrice != null ? `PKR ${batch.costPrice.toLocaleString()}/${batch.unit}` : '-'}
+                                            </td>
+                                          )}
+                                          <td className="px-4 py-2 whitespace-nowrap text-gray-700 dark:text-gray-200">
+                                            {batch.salePrice != null ? `PKR ${batch.salePrice.toLocaleString()}/${batch.unit}` : '-'}
+                                          </td>
+                                          <td className="px-4 py-2 whitespace-nowrap">
+                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(batch.status)}`}>
+                                              {batch.status}
+                                            </span>
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </>
+                  );
+                })
               )}
             </tbody>
           </table>

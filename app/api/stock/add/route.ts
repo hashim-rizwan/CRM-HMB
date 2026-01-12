@@ -22,6 +22,76 @@ async function generateUniqueBarcode(): Promise<string> {
   return barcode;
 }
 
+// Generate a unique batch number for a marble type
+// Example: TRAV-B1, TRAV-B2, etc.
+async function generateBatchNumber(marbleType: string): Promise<string> {
+  const prefix =
+    marbleType.replace(/\s+/g, '').toUpperCase().slice(0, 4) || 'HMB';
+
+  // Find ALL batches for this marble type (including those with batch numbers)
+  const existingBatches = await prisma.marble.findMany({
+    where: {
+      marbleType,
+      batchNumber: {
+        not: null,
+      },
+    },
+    select: {
+      batchNumber: true,
+    },
+    orderBy: {
+      createdAt: 'desc', // Get most recent first
+    },
+  });
+
+  // Extract batch numbers and find the highest number
+  let maxBatchNum = 0;
+  // Match patterns like: ONYX-B1, TRAV-B2, etc. (case insensitive)
+  const batchNumPattern = new RegExp(`^${prefix}-B(\\d+)$`, 'i');
+  
+  for (const batch of existingBatches) {
+    if (batch.batchNumber) {
+      const match = batch.batchNumber.match(batchNumPattern);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (!isNaN(num) && num > maxBatchNum) {
+          maxBatchNum = num;
+        }
+      }
+    }
+  }
+
+  // Generate next batch number
+  const newBatchNum = maxBatchNum + 1;
+  const newBatchNumber = `${prefix}-B${newBatchNum}`;
+
+  // Double-check this batch number doesn't already exist (safety check)
+  const exists = await prisma.marble.findFirst({
+    where: {
+      marbleType,
+      batchNumber: newBatchNumber,
+    },
+  });
+
+  // If it somehow exists, increment until we find a unique one
+  if (exists) {
+    let counter = newBatchNum + 1;
+    let uniqueBatchNumber = `${prefix}-B${counter}`;
+    while (await prisma.marble.findFirst({
+      where: {
+        marbleType,
+        batchNumber: uniqueBatchNumber,
+      },
+    })) {
+      counter++;
+      uniqueBatchNumber = `${prefix}-B${counter}`;
+    }
+    return uniqueBatchNumber;
+  }
+
+  return newBatchNumber;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const {
@@ -69,33 +139,43 @@ export async function POST(request: NextRequest) {
       finalBarcode = await generateUniqueBarcode();
     }
 
-    // Check if marble with same type and location exists (color is now derived from type)
-    let marble = await prisma.marble.findFirst({
+    // Always auto-generate a NEW batch number for each stock addition
+    // Ignore any batch number sent from frontend to ensure uniqueness
+    const finalBatchNumber = await generateBatchNumber(marbleType);
+
+    // Always create a NEW batch for each stock addition
+    // Check if there's a template entry (created via "Add New Item" - no batch number)
+    let templateEntry = await prisma.marble.findFirst({
       where: {
         marbleType,
-        location,
+        batchNumber: null, // Template entries have no batch number
       },
     });
 
-    if (marble) {
-      // Update existing marble
+    let marble;
+
+    if (templateEntry) {
+      // Convert template entry to first batch
+      // Update the template entry to become a real batch with stock
       marble = await prisma.marble.update({
-        where: { id: marble.id },
+        where: { id: templateEntry.id },
         data: {
-          quantity: {
-            increment: quantity,
-          },
-          costPrice: costPrice || marble.costPrice,
-          salePrice: salePrice || marble.salePrice,
-          supplier: supplier || marble.supplier,
-          batchNumber: batchNumber || marble.batchNumber,
-          barcode: finalBarcode || marble.barcode,
-          notes: notes || marble.notes,
+          color: finalColor,
+          quantity: quantity, // Set quantity (was 0)
+          unit: unit, // Update unit
+          location: location, // Update location from 'N/A'
+          supplier: supplier || templateEntry.supplier,
+          batchNumber: finalBatchNumber, // Assign batch number
+          barcode: finalBarcode || templateEntry.barcode,
+          costPrice: costPrice || templateEntry.costPrice,
+          salePrice: salePrice || templateEntry.salePrice,
+          notes: notes || templateEntry.notes,
+          status: 'In Stock', // Update status
           updatedAt: new Date(),
         },
       });
     } else {
-      // Create new marble
+      // Always create a NEW batch entry (each stock addition = new batch)
       marble = await prisma.marble.create({
         data: {
           marbleType,
@@ -104,7 +184,7 @@ export async function POST(request: NextRequest) {
           unit,
           location,
           supplier: supplier || null,
-          batchNumber: batchNumber || null,
+          batchNumber: finalBatchNumber, // New batch number for each addition
           barcode: finalBarcode || null,
           costPrice: costPrice || null,
           salePrice: salePrice || null,
@@ -139,11 +219,28 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({ success: true, marble }, { status: 201 });
-  } catch (error) {
+    return NextResponse.json({ 
+      success: true, 
+      marble,
+      batchNumber: finalBatchNumber // Return the batch number that was used
+    }, { status: 201 });
+  } catch (error: any) {
     console.error('Error adding stock:', error);
+    
+    // Return more specific error messages
+    let errorMessage = 'Failed to add stock';
+    
+    if (error.code === 'P2002') {
+      // Unique constraint violation (e.g., duplicate barcode)
+      errorMessage = 'A record with this information already exists. Please check for duplicates.';
+    } else if (error.message) {
+      errorMessage = error.message;
+    } else if (typeof error === 'string') {
+      errorMessage = error;
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to add stock' },
+      { error: errorMessage },
       { status: 500 }
     );
   }
