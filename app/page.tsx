@@ -22,30 +22,10 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('')
   const [darkMode, setDarkMode] = useState(false)
 
-  // Check if user is already logged in (from localStorage)
+  // Load dark mode preference only (no auto-login on restart)
   useEffect(() => {
-    const savedUsername = localStorage.getItem('username')
-    const savedUserData = localStorage.getItem('userData')
     const savedDarkMode = localStorage.getItem('darkMode')
     
-    if (savedUsername) {
-      // Verify the user still exists and is active (optional: can add API check)
-      setUsername(savedUsername)
-      setIsAuthenticated(true)
-      
-      // Load user role from saved data
-      if (savedUserData) {
-        try {
-          const userData = JSON.parse(savedUserData)
-          if (userData.role === 'Admin' || userData.role === 'Staff') {
-            setUserRole(userData.role)
-          }
-        } catch (e) {
-          console.error('Error parsing user data:', e)
-        }
-      }
-    }
-
     // Load dark mode preference
     if (savedDarkMode === 'true') {
       setDarkMode(true)

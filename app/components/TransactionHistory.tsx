@@ -239,8 +239,8 @@ export function TransactionHistory() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h3 className="text-xl font-semibold text-[#1F2937] dark:text-white">Transaction History</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            <h3 className="text-xl font-semibold text-[#1F2937]">Transaction History</h3>
+            <p className="text-sm text-gray-600 mt-1">
               Complete history of all inventory transactions
             </p>
           </div>
@@ -255,75 +255,75 @@ export function TransactionHistory() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-6">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
-                <Calendar className="w-6 h-6 text-[#2563EB] dark:text-blue-400" />
+              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                <Calendar className="w-6 h-6 text-[#2563EB]" />
               </div>
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Total Transactions</p>
-                <p className="text-2xl font-semibold text-[#1F2937] dark:text-white">{filteredTransactions.length}</p>
+                <p className="text-sm text-gray-600">Total Transactions</p>
+                <p className="text-2xl font-semibold text-[#1F2937]">{filteredTransactions.length}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-6">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
-                <ArrowUpCircle className="w-6 h-6 text-[#16A34A] dark:text-green-400" />
+              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                <ArrowUpCircle className="w-6 h-6 text-[#16A34A]" />
               </div>
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Total Stock Added</p>
-                <p className="text-2xl font-semibold text-[#1F2937] dark:text-white">{totalAdded} kg</p>
+                <p className="text-sm text-gray-600">Total Stock Added</p>
+                <p className="text-2xl font-semibold text-[#1F2937]">{totalAdded} kg</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-6">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
-                <ArrowDownCircle className="w-6 h-6 text-[#DC2626] dark:text-red-400" />
+              <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+                <ArrowDownCircle className="w-6 h-6 text-[#DC2626]" />
               </div>
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Total Stock Removed</p>
-                <p className="text-2xl font-semibold text-[#1F2937] dark:text-white">{totalRemoved} kg</p>
+                <p className="text-sm text-gray-600">Total Stock Removed</p>
+                <p className="text-2xl font-semibold text-[#1F2937]">{totalRemoved} kg</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-6 mb-6">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
           <div className="flex items-center gap-2 mb-4">
-            <Filter className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-            <h4 className="font-semibold text-[#1F2937] dark:text-white">Filters</h4>
+            <Filter className="w-5 h-5 text-gray-500" />
+            <h4 className="font-semibold text-[#1F2937]">Filters</h4>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             {/* Search */}
             <div className="lg:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Search</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
                   type="text"
                   placeholder="Search by marble, batch, ID, or user..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
                 />
               </div>
             </div>
 
             {/* Transaction Type */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Transaction Type
               </label>
               <select
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value as any)}
-                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
               >
                 <option value="all">All Types</option>
                 <option value="added">Stock Added</option>
@@ -333,11 +333,11 @@ export function TransactionHistory() {
 
             {/* Marble Type */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Marble Type</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Marble Type</label>
               <select
                 value={filterMarble}
                 onChange={(e) => setFilterMarble(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
               >
                 <option value="all">All Marbles</option>
                 {marbleTypes.map((type) => (
@@ -350,33 +350,33 @@ export function TransactionHistory() {
 
             {/* Date From */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Date From</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Date From</label>
               <input
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
               />
             </div>
 
             {/* Date To */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Date To</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Date To</label>
               <input
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
               />
             </div>
 
             {/* User Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Performed By</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Performed By</label>
               <select
                 value={filterUser}
                 onChange={(e) => setFilterUser(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
               >
                 <option value="all">All Users</option>
                 {users.map((user) => (
@@ -390,60 +390,60 @@ export function TransactionHistory() {
 
           <button
             onClick={handleClearFilters}
-            className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            className="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
           >
             Clear All Filters
           </button>
         </div>
 
         {/* Transactions Table */}
-        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-800">
+              <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Transaction ID
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Type
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Marble
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Quantity (kg)
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Location
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Batch Number
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Performed By
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Date & Time
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
+              <tbody className="bg-white divide-y divide-gray-200">
                 {filteredTransactions.length > 0 ? (
                   filteredTransactions.map((transaction) => (
-                    <tr key={transaction.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                    <tr key={transaction.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{transaction.id}</div>
+                        <div className="text-sm font-medium text-gray-900">{transaction.id}</div>
                         {transaction.notes && (
-                          <div className="text-xs text-gray-500 dark:text-gray-400">{transaction.notes}</div>
+                          <div className="text-xs text-gray-500">{transaction.notes}</div>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${
                             transaction.type === 'added'
-                              ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400'
-                              : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400'
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-red-100 text-red-800'
                           }`}
                         >
                           {transaction.type === 'added' ? (
@@ -455,33 +455,33 @@ export function TransactionHistory() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        <div className="text-sm font-medium text-gray-900">
                           {transaction.marbleType}
                         </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">{transaction.color}</div>
+                        <div className="text-xs text-gray-500">{transaction.color}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div
                           className={`text-sm font-semibold ${
-                            transaction.type === 'added' ? 'text-[#16A34A] dark:text-green-400' : 'text-[#DC2626] dark:text-red-400'
+                            transaction.type === 'added' ? 'text-[#16A34A]' : 'text-[#DC2626]'
                           }`}
                         >
                           {transaction.type === 'added' ? '+' : '-'}
                           {transaction.quantity} kg
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                         {transaction.location}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-mono text-gray-900 dark:text-gray-100">
+                        <div className="text-sm font-mono text-gray-900">
                           {transaction.batchNumber}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                         {transaction.performedBy}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                         {transaction.timestamp}
                       </td>
                     </tr>
@@ -489,7 +489,7 @@ export function TransactionHistory() {
                 ) : (
                   <tr>
                     <td colSpan={8} className="px-6 py-12 text-center">
-                      <p className="text-gray-500 dark:text-gray-400">No transactions found matching your filters</p>
+                      <p className="text-gray-500">No transactions found matching your filters</p>
                     </td>
                   </tr>
                 )}
@@ -499,7 +499,7 @@ export function TransactionHistory() {
         </div>
 
         {/* Results Count */}
-        <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
+        <div className="mt-4 text-sm text-gray-600">
           Showing {filteredTransactions.length} of {mockTransactions.length} transactions
         </div>
       </div>

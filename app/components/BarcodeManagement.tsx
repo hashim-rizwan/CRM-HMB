@@ -189,7 +189,7 @@ export function BarcodeManagement() {
     document.body.appendChild(printContainer);
 
     // Generate barcode in the print container
-    const printSvg = document.getElementById('print-barcode-svg') as SVGSVGElement;
+    const printSvg = document.getElementById('print-barcode-svg') as unknown as SVGSVGElement;
     if (printSvg) {
       try {
         JsBarcode(printSvg, item.barcodeValue, {

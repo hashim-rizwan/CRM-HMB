@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { User, Mail, Phone, Briefcase, Shield, Lock, LogOut, Save, Edit, X, ArrowLeft } from 'lucide-react';
-import { SecuritySettings } from './SecuritySettings';
+import { User, Mail, Phone, Briefcase, Shield, Lock, LogOut, Save, Edit, X } from 'lucide-react';
 
 interface UserProfileProps {
   username: string;
@@ -8,7 +7,6 @@ interface UserProfileProps {
 }
 
 export function UserProfile({ username, onLogout }: UserProfileProps) {
-  const [showSecuritySettings, setShowSecuritySettings] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isEditingPassword, setIsEditingPassword] = useState(false);
   const [passwordData, setPasswordData] = useState({
@@ -72,41 +70,21 @@ export function UserProfile({ username, onLogout }: UserProfileProps) {
     setIsEditingPassword(false);
   };
 
-  // If security settings is shown, render that component
-  if (showSecuritySettings) {
-    return (
-      <div>
-        <div className="p-8 pb-0">
-          <div className="max-w-6xl mx-auto">
-            <button
-              onClick={() => setShowSecuritySettings(false)}
-              className="mb-4 flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span className="text-sm font-medium">Back to Profile</span>
-            </button>
-          </div>
-        </div>
-        <SecuritySettings />
-      </div>
-    );
-  }
-
   return (
     <div className="p-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h3 className="text-xl font-semibold text-[#1F2937] dark:text-white">User Profile</h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Manage your account information and security</p>
+          <h3 className="text-xl font-semibold text-[#1F2937]">User Profile</h3>
+          <p className="text-sm text-gray-600 mt-1">Manage your account information and security</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* User Info Card */}
           <div className="lg:col-span-2 space-y-6">
             {/* Profile Information */}
-            <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-8">
-              <h4 className="text-lg font-semibold text-[#1F2937] dark:text-white mb-6">Profile Information</h4>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+              <h4 className="text-lg font-semibold text-[#1F2937] mb-6">Profile Information</h4>
 
               <div className="space-y-6">
                 {/* Avatar & Name */}
@@ -118,16 +96,16 @@ export function UserProfile({ username, onLogout }: UserProfileProps) {
                       .join('')}
                   </div>
                   <div>
-                    <h3 className="text-xl font-semibold text-[#1F2937] dark:text-white">{profileData.fullName}</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">@{profileData.username}</p>
-                    <p className="text-sm text-[#2563EB] dark:text-blue-400 font-medium mt-1">{profileData.role}</p>
+                    <h3 className="text-xl font-semibold text-[#1F2937]">{profileData.fullName}</h3>
+                    <p className="text-sm text-gray-600 mt-1">@{profileData.username}</p>
+                    <p className="text-sm text-[#2563EB] font-medium mt-1">{profileData.role}</p>
                   </div>
                 </div>
 
                 {/* Profile Fields */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-gray-200 dark:border-gray-800">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-gray-200">
                   <div>
-                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                       <Mail className="w-4 h-4" />
                       Email Address
                     </label>
@@ -136,13 +114,13 @@ export function UserProfile({ username, onLogout }: UserProfileProps) {
                       name="email"
                       value={editedProfileData.email}
                       onChange={handleProfileEdit}
-                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-500 dark:disabled:text-gray-500"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
                       disabled={!isEditingProfile}
                     />
                   </div>
 
                   <div>
-                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                       <Phone className="w-4 h-4" />
                       Phone Number
                     </label>
@@ -151,33 +129,33 @@ export function UserProfile({ username, onLogout }: UserProfileProps) {
                       name="phone"
                       value={editedProfileData.phone}
                       onChange={handleProfileEdit}
-                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-500 dark:disabled:text-gray-500"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
                       disabled={!isEditingProfile}
                     />
                   </div>
 
                   <div>
-                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                       <Briefcase className="w-4 h-4" />
                       Department
                     </label>
-                    <p className="text-sm text-gray-900 dark:text-gray-100">{profileData.department}</p>
+                    <p className="text-sm text-gray-900">{profileData.department}</p>
                   </div>
 
                   <div>
-                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                       <Shield className="w-4 h-4" />
                       Account Type
                     </label>
-                    <p className="text-sm text-gray-900 dark:text-gray-100">{profileData.role}</p>
+                    <p className="text-sm text-gray-900">{profileData.role}</p>
                   </div>
 
                   <div className="md:col-span-2">
-                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                       <User className="w-4 h-4" />
                       Member Since
                     </label>
-                    <p className="text-sm text-gray-900 dark:text-gray-100">{profileData.joinedDate}</p>
+                    <p className="text-sm text-gray-900">{profileData.joinedDate}</p>
                   </div>
                 </div>
               </div>
@@ -193,7 +171,7 @@ export function UserProfile({ username, onLogout }: UserProfileProps) {
                   </button>
                   <button
                     onClick={handleCancelProfileEdit}
-                    className="px-6 py-3 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors font-medium"
+                    className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
                   >
                     <X className="w-4 h-4" />
                     Cancel
@@ -203,9 +181,9 @@ export function UserProfile({ username, onLogout }: UserProfileProps) {
             </div>
 
             {/* Security Settings */}
-            <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-8">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
               <div className="flex items-center justify-between mb-6">
-                <h4 className="text-lg font-semibold text-[#1F2937] dark:text-white">Security Settings</h4>
+                <h4 className="text-lg font-semibold text-[#1F2937]">Security Settings</h4>
                 {!isEditingPassword && (
                   <button
                     onClick={() => setIsEditingPassword(true)}
@@ -220,7 +198,7 @@ export function UserProfile({ username, onLogout }: UserProfileProps) {
               {isEditingPassword ? (
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Current Password
                     </label>
                     <input
@@ -228,12 +206,12 @@ export function UserProfile({ username, onLogout }: UserProfileProps) {
                       name="currentPassword"
                       value={passwordData.currentPassword}
                       onChange={handlePasswordChange}
-                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       New Password
                     </label>
                     <input
@@ -241,12 +219,12 @@ export function UserProfile({ username, onLogout }: UserProfileProps) {
                       name="newPassword"
                       value={passwordData.newPassword}
                       onChange={handlePasswordChange}
-                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Confirm New Password
                     </label>
                     <input
@@ -254,7 +232,7 @@ export function UserProfile({ username, onLogout }: UserProfileProps) {
                       name="confirmPassword"
                       value={passwordData.confirmPassword}
                       onChange={handlePasswordChange}
-                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
                     />
                   </div>
 
@@ -271,16 +249,16 @@ export function UserProfile({ username, onLogout }: UserProfileProps) {
                         setIsEditingPassword(false);
                         setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
                       }}
-                      className="px-6 py-3 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors font-medium"
+                      className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
                     >
                       Cancel
                     </button>
                   </div>
                 </div>
               ) : (
-                <div className="text-sm text-gray-600 dark:text-gray-400">
+                <div className="text-sm text-gray-600">
                   <p>Password last changed: January 5, 2026</p>
-                  <p className="mt-2 text-xs text-gray-500 dark:text-gray-500">
+                  <p className="mt-2 text-xs text-gray-500">
                     Use a strong password with at least 8 characters, including uppercase, lowercase,
                     numbers, and special characters.
                   </p>
@@ -291,29 +269,26 @@ export function UserProfile({ username, onLogout }: UserProfileProps) {
 
           {/* Quick Actions Sidebar */}
           <div className="lg:col-span-1">
-            <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-6 sticky top-8">
-              <h4 className="font-semibold text-[#1F2937] dark:text-white mb-4">Quick Actions</h4>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 sticky top-8">
+              <h4 className="font-semibold text-[#1F2937] mb-4">Quick Actions</h4>
 
               <div className="space-y-3">
                 <button
                   onClick={() => setIsEditingProfile(true)}
-                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-2 font-medium"
+                  className="w-full px-4 py-3 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors flex items-center gap-2 font-medium"
                 >
                   <Edit className="w-4 h-4" />
                   Edit Profile
                 </button>
 
-                <button
-                  onClick={() => setShowSecuritySettings(true)}
-                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-2 font-medium"
-                >
+                <button className="w-full px-4 py-3 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors flex items-center gap-2 font-medium">
                   <Shield className="w-4 h-4" />
                   Security Settings
                 </button>
 
                 <button
                   onClick={onLogout}
-                  className="w-full px-4 py-3 bg-red-50 dark:bg-red-900/20 text-[#DC2626] dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors flex items-center gap-2 font-medium"
+                  className="w-full px-4 py-3 bg-red-50 text-[#DC2626] rounded-lg hover:bg-red-100 transition-colors flex items-center gap-2 font-medium"
                 >
                   <LogOut className="w-4 h-4" />
                   Logout
@@ -321,20 +296,20 @@ export function UserProfile({ username, onLogout }: UserProfileProps) {
               </div>
 
               {/* Account Stats */}
-              <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-800">
-                <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Account Activity</h5>
+              <div className="mt-8 pt-6 border-t border-gray-200">
+                <h5 className="text-sm font-medium text-gray-700 mb-3">Account Activity</h5>
                 <div className="space-y-3">
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600 dark:text-gray-400">Last Login</span>
-                    <span className="text-gray-900 dark:text-gray-100 font-medium">Today, 9:15 AM</span>
+                    <span className="text-gray-600">Last Login</span>
+                    <span className="text-gray-900 font-medium">Today, 9:15 AM</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600 dark:text-gray-400">Login Count</span>
-                    <span className="text-gray-900 dark:text-gray-100 font-medium">342 times</span>
+                    <span className="text-gray-600">Login Count</span>
+                    <span className="text-gray-900 font-medium">342 times</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600 dark:text-gray-400">Account Status</span>
-                    <span className="text-[#16A34A] dark:text-green-400 font-medium">Active</span>
+                    <span className="text-gray-600">Account Status</span>
+                    <span className="text-[#16A34A] font-medium">Active</span>
                   </div>
                 </div>
               </div>

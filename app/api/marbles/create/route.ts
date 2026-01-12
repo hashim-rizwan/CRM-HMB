@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 
 // Generate unique barcode: HMB-XXXXXX format
 async function generateUniqueBarcode(): Promise<string> {
-  let barcode: string = '';
+  let barcode: string;
   let exists = true;
   
   while (exists) {
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
         marbleType,
         color: finalColor,
         quantity: 0, // No stock initially
-        unit: 'square feet', // Default unit
+        unit: 'kg', // Default unit
         location: 'N/A', // Not in stock yet
         supplier: supplier || null,
         batchNumber: batchNumber || null,

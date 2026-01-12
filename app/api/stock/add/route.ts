@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 
 // Generate unique barcode: HMB-XXXXXX format
 async function generateUniqueBarcode(): Promise<string> {
-  let barcode: string = '';
+  let barcode: string;
   let exists = true;
   
   while (exists) {
