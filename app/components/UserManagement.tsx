@@ -74,6 +74,7 @@ export function UserManagement() {
       email: user.email,
       role: user.role,
       password: '',
+      confirmPassword: '',
       phone: '',
       department: '',
     });
