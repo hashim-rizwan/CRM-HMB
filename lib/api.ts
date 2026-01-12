@@ -51,10 +51,13 @@ export const stockAPI = {
   }),
 
   remove: (data: {
+    barcode?: string;
     marbleType: string;
-    quantity: number;
+    shade: string;
+    slabSizeLength: number;
+    slabSizeWidth: number;
+    numberOfSlabs: number;
     reason: string;
-    requestedBy?: string;
     notes?: string;
   }) => apiRequest<{ success: boolean; marble: any }>('/stock/remove', {
     method: 'POST',
@@ -110,6 +113,15 @@ export const inventoryAPI = {
         totalInventoryValue: number;
       };
     }>('/inventory/stats'),
+
+  getMarbleTypes: () =>
+    apiRequest<{
+      success: boolean;
+      marbleTypes: Array<{
+        marbleType: string;
+        shades: string[];
+      }>;
+    }>('/inventory/marble-types'),
 };
 
 // User Management APIs

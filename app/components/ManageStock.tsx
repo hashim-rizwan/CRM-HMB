@@ -28,12 +28,17 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
   });
 
   const [removeFormData, setRemoveFormData] = useState({
+    barcode: '',
     marbleType: '',
-    quantity: '',
+    shade: '',
+    slabSizeLength: '',
+    slabSizeWidth: '',
+    numberOfSlabs: '',
     reason: '',
-    requestedBy: '',
     notes: '',
   });
+  const [scannedRemoveBarcode, setScannedRemoveBarcode] = useState<string>('');
+  const [marbleTypesData, setMarbleTypesData] = useState<Array<{ marbleType: string; shades: string[] }>>([]);
 
   const [newItemFormData, setNewItemFormData] = useState({
     marbleType: '',
@@ -110,27 +115,52 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
     setSuccessMessage(null);
 
     try {
+      // Calculate quantity from slab size and number of slabs
+      const length = parseFloat(removeFormData.slabSizeLength);
+      const width = parseFloat(removeFormData.slabSizeWidth);
+      const numberOfSlabs = parseFloat(removeFormData.numberOfSlabs);
+      
+      if (!length || !width || !numberOfSlabs) {
+        throw new Error('Please enter valid slab size and number of slabs');
+      }
+      
+      // Calculate total square feet: length (ft) × width (ft) × number of slabs
+      const totalSquareFeet = length * width * numberOfSlabs;
+
       await stockAPI.remove({
+        barcode: removeFormData.barcode || scannedRemoveBarcode,
         marbleType: removeFormData.marbleType,
-        quantity: parseFloat(removeFormData.quantity),
+        shade: removeFormData.shade,
+        slabSizeLength: length,
+        slabSizeWidth: width,
+        numberOfSlabs: numberOfSlabs,
         reason: removeFormData.reason,
-        requestedBy: removeFormData.requestedBy || undefined,
         notes: removeFormData.notes || undefined,
       });
 
       setRemoveFormData({
+        barcode: '',
         marbleType: '',
-        quantity: '',
+        shade: '',
+        slabSizeLength: '',
+        slabSizeWidth: '',
+        numberOfSlabs: '',
         reason: '',
-        requestedBy: '',
         notes: '',
       });
+      setScannedRemoveBarcode('');
       
       // Refresh inventory data after removing stock
       const response = await inventoryAPI.getAll();
       setInventory(response.marbles || []);
       
-      setSuccessMessage('Stock removed successfully!');
+      // Refresh marble types data
+      const marbleTypesResponse = await inventoryAPI.getMarbleTypes();
+      if (marbleTypesResponse.marbleTypes) {
+        setMarbleTypesData(marbleTypesResponse.marbleTypes);
+      }
+      
+      setSuccessMessage(`Stock removed successfully! Removed: ${totalSquareFeet.toLocaleString()} sq ft`);
       setTimeout(() => setSuccessMessage(null), 5000);
     } catch (err: any) {
       setError(err.message || 'Failed to remove stock');
@@ -301,6 +331,24 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
     return Array.from(types).sort();
   }, [inventory]);
 
+  // Fetch marble types and shades for Remove Stock dropdowns
+  useEffect(() => {
+    const fetchMarbleTypes = async () => {
+      try {
+        const response = await inventoryAPI.getMarbleTypes();
+        if (response.marbleTypes) {
+          setMarbleTypesData(response.marbleTypes);
+        }
+      } catch (error) {
+        console.error('Error fetching marble types:', error);
+      }
+    };
+    
+    if (activeTab === 'remove') {
+      fetchMarbleTypes();
+    }
+  }, [activeTab]);
+
   // Fetch inventory data from API
   useEffect(() => {
     const fetchInventory = async () => {
@@ -396,8 +444,11 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
           // Auto-populate Remove Stock form
           setRemoveFormData({
             ...removeFormData,
+            barcode: barcode,
             marbleType: marble.marbleType,
+            shade: marble.color || '', // Use color field for shade
           });
+          setScannedRemoveBarcode(barcode);
           setSuccessMessage(`Barcode scanned: ${barcode}. Marble: ${marble.marbleType} - ${marble.color}`);
           setTimeout(() => setSuccessMessage(null), 5000);
         }
@@ -989,118 +1040,181 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
               <form onSubmit={handleRemoveSubmit} className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-8">
-                <div className="space-y-6 mb-6">
-                  {/* Marble Type */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Marble Type <span className="text-[#DC2626]">*</span>
-                    </label>
-                    <select
-                      name="marbleType"
-                      value={removeFormData.marbleType}
-                      onChange={handleRemoveChange}
-                      required
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
-                    >
-                      <option value="">Select marble type</option>
-                      {filteredAvailableStock.map((stock) => (
-                        <option key={stock.type} value={stock.type}>
-                          {stock.type} - Available: {stock.available.toLocaleString()} {stock.unit}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+            {/* Barcode Scanner Button */}
+            <div className="mb-6 flex justify-end">
+              <button
+                type="button"
+                onClick={handleScanBarcode}
+                className="px-4 py-2 bg-[#2563EB] dark:bg-blue-600 text-white rounded-lg hover:bg-[#1E40AF] dark:hover:bg-blue-700 transition-colors flex items-center gap-2"
+              >
+                <Scan className="w-4 h-4" />
+                Scan Barcode
+              </button>
+            </div>
 
-                  {/* Quantity */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Quantity to Remove <span className="text-[#DC2626]">*</span>
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        name="quantity"
-                        value={removeFormData.quantity}
-                        onChange={handleRemoveChange}
-                        required
-                        min="0"
-                        max={selectedStock?.available || undefined}
-                        step="0.01"
-                        placeholder="0.00"
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
-                      />
-                      <span className="absolute right-4 top-1/2 transform -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400">
-                        {selectedStock?.unit || 'square feet'}
-                      </span>
-                    </div>
-                    {selectedStock && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        Maximum available: {selectedStock.available.toLocaleString()} {selectedStock.unit}
-                      </p>
-                    )}
-                  </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              {/* Marble Type */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Marble Type <span className="text-[#DC2626]">*</span>
+                </label>
+                <select
+                  name="marbleType"
+                  value={removeFormData.marbleType}
+                  onChange={handleRemoveChange}
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+                >
+                  <option value="">Select marble type</option>
+                  {marbleTypesData.map((item) => (
+                    <option key={item.marbleType} value={item.marbleType}>
+                      {item.marbleType}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {scannedRemoveBarcode ? `Barcode: ${scannedRemoveBarcode}` : 'Select from dropdown or scan barcode to auto-fill'}
+                </p>
+              </div>
 
-                  {/* Reason */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Reason for Removal <span className="text-[#DC2626]">*</span>
-                    </label>
-                    <select
-                      name="reason"
-                      value={removeFormData.reason}
-                      onChange={handleRemoveChange}
-                      required
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
-                    >
-                      <option value="">Select reason</option>
-                      {reasons.map((reason) => (
-                        <option key={reason} value={reason}>{reason}</option>
-                      ))}
-                    </select>
-                  </div>
+              {/* Shade */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Shade <span className="text-[#DC2626]">*</span>
+                </label>
+                <select
+                  name="shade"
+                  value={removeFormData.shade}
+                  onChange={handleRemoveChange}
+                  required
+                  disabled={!removeFormData.marbleType}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:cursor-not-allowed"
+                >
+                  <option value="">
+                    {removeFormData.marbleType ? 'Select shade' : 'Select marble type first'}
+                  </option>
+                  {removeFormData.marbleType && (() => {
+                    const selectedMarble = marbleTypesData.find(m => m.marbleType === removeFormData.marbleType);
+                    return selectedMarble?.shades.map((shade) => (
+                      <option key={shade} value={shade}>
+                        {shade}
+                      </option>
+                    ));
+                  })()}
+                </select>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {scannedRemoveBarcode ? 'Auto-filled from barcode' : 'Select shade for the chosen marble type'}
+                </p>
+              </div>
 
-                  {/* Requested By */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Requested By
-                    </label>
-                    <input
-                      type="text"
-                      name="requestedBy"
-                      value={removeFormData.requestedBy}
-                      onChange={handleRemoveChange}
-                      placeholder="Name or department"
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
-                    />
-                  </div>
-
-                  {/* Notes */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Notes
-                    </label>
-                    <textarea
-                      name="notes"
-                      value={removeFormData.notes}
-                      onChange={handleRemoveChange}
-                      rows={4}
-                      placeholder="Additional details..."
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
-                    />
-                  </div>
+              {/* Slab Size */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Slab Size (ft) <span className="text-[#DC2626]">*</span>
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="number"
+                    name="slabSizeLength"
+                    value={removeFormData.slabSizeLength}
+                    onChange={handleRemoveChange}
+                    required
+                    min="0"
+                    step="0.01"
+                    placeholder="Length"
+                    className="flex-1 min-w-0 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+                  />
+                  <span className="text-gray-500 dark:text-gray-400 flex-shrink-0">×</span>
+                  <input
+                    type="number"
+                    name="slabSizeWidth"
+                    value={removeFormData.slabSizeWidth}
+                    onChange={handleRemoveChange}
+                    required
+                    min="0"
+                    step="0.01"
+                    placeholder="Width"
+                    className="flex-1 min-w-0 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+                  />
                 </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Enter length and width in feet
+                </p>
+              </div>
+
+              {/* Number of Slabs */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Number of Slabs <span className="text-[#DC2626]">*</span>
+                </label>
+                <input
+                  type="number"
+                  name="numberOfSlabs"
+                  value={removeFormData.numberOfSlabs}
+                  onChange={handleRemoveChange}
+                  required
+                  min="1"
+                  step="1"
+                  placeholder="e.g., 10"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Total quantity will be calculated: Length × Width × Number of Slabs
+                </p>
+              </div>
+            </div>
+
+            {/* Reason */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Reason for Removal <span className="text-[#DC2626]">*</span>
+              </label>
+              <select
+                name="reason"
+                value={removeFormData.reason}
+                onChange={handleRemoveChange}
+                required
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white"
+              >
+                <option value="">Select reason</option>
+                {reasons.map((reason) => (
+                  <option key={reason} value={reason}>{reason}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Notes */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Notes
+              </label>
+              <textarea
+                name="notes"
+                value={removeFormData.notes}
+                onChange={handleRemoveChange}
+                rows={4}
+                placeholder="Additional notes or comments..."
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 resize-y"
+              />
+            </div>
 
                 {/* Buttons */}
                 <div className="flex items-center justify-end gap-4">
                   <button
                     type="button"
-                    onClick={() => setRemoveFormData({
-                      marbleType: '',
-                      quantity: '',
-                      reason: '',
-                      requestedBy: '',
-                      notes: '',
-                    })}
+                    onClick={() => {
+                      setRemoveFormData({
+                        barcode: '',
+                        marbleType: '',
+                        shade: '',
+                        slabSizeLength: '',
+                        slabSizeWidth: '',
+                        numberOfSlabs: '',
+                        reason: '',
+                        notes: '',
+                      });
+                      setScannedRemoveBarcode('');
+                    }}
                     className="px-6 py-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                   >
                     Reset
@@ -1131,43 +1245,26 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
                   </div>
 
                   <div className="pb-4 border-b border-gray-200 dark:border-gray-800">
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Available Stock</p>
-                    <p className="font-medium text-[#1F2937] dark:text-white">
-                      {selectedStock 
-                        ? `${selectedStock.available.toLocaleString()} ${selectedStock.unit}`
-                        : '-'
-                      }
-                    </p>
-                  </div>
-
-                  <div className="pb-4 border-b border-gray-200 dark:border-gray-800">
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Removing</p>
                     <p className="font-medium text-[#DC2626] dark:text-red-400">
-                      {removeFormData.quantity 
-                        ? `${parseFloat(removeFormData.quantity).toLocaleString()} ${selectedStock?.unit || 'square feet'}`
-                        : '-'
-                      }
+                      {(() => {
+                        const length = parseFloat(removeFormData.slabSizeLength);
+                        const width = parseFloat(removeFormData.slabSizeWidth);
+                        const numberOfSlabs = parseFloat(removeFormData.numberOfSlabs);
+                        if (length && width && numberOfSlabs) {
+                          const totalSqFt = length * width * numberOfSlabs;
+                          return `${totalSqFt.toLocaleString()} sq ft`;
+                        }
+                        return '-';
+                      })()}
                     </p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Remaining Stock</p>
-                    <p className="font-semibold text-[#1F2937] dark:text-white">
-                      {selectedStock && removeFormData.quantity
-                        ? `${(selectedStock.available - parseFloat(removeFormData.quantity)).toLocaleString()} ${selectedStock.unit}`
-                        : '-'
-                      }
-                    </p>
+                    {removeFormData.slabSizeLength && removeFormData.slabSizeWidth && removeFormData.numberOfSlabs && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {removeFormData.slabSizeLength} × {removeFormData.slabSizeWidth} × {removeFormData.numberOfSlabs} slabs
+                      </p>
+                    )}
                   </div>
                 </div>
-
-                {selectedStock && removeFormData.quantity && (selectedStock.available - parseFloat(removeFormData.quantity)) < 500 && (
-                  <div className="mt-4 p-3 bg-[#FEF3C7] dark:bg-yellow-900 border border-[#F59E0B] dark:border-yellow-700 rounded-lg">
-                    <p className="text-xs text-[#92400E] dark:text-yellow-300">
-                      ⚠️ Warning: Remaining stock will be below 500 {selectedStock.unit}
-                    </p>
-                  </div>
-                )}
               </div>
             </div>
           </div>

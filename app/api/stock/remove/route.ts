@@ -1,95 +1,183 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+// Parse slab information from notes field
+// Format: "Slab Size: LENGTHxWIDTH, Number of Slabs: COUNT"
+function parseSlabInfo(notes: string | null): { length: number; width: number; numberOfSlabs: number } | null {
+  if (!notes) return null;
+  
+  try {
+    // Match pattern: "Slab Size: LENGTHxWIDTH, Number of Slabs: COUNT"
+    const slabSizeMatch = notes.match(/Slab Size:\s*([\d.]+)x([\d.]+)/i);
+    const slabsMatch = notes.match(/Number of Slabs:\s*(\d+)/i);
+    
+    if (slabSizeMatch && slabsMatch) {
+      return {
+        length: parseFloat(slabSizeMatch[1]),
+        width: parseFloat(slabSizeMatch[2]),
+        numberOfSlabs: parseInt(slabsMatch[1], 10),
+      };
+    }
+  } catch (error) {
+    console.error('Error parsing slab info from notes:', error);
+  }
+  
+  return null;
+}
+
+// Check if two slab configurations match (with tolerance for floating point)
+function slabConfigMatches(
+  config1: { length: number; width: number; numberOfSlabs: number },
+  config2: { length: number; width: number; numberOfSlabs: number },
+  tolerance: number = 0.01
+): boolean {
+  return (
+    Math.abs(config1.length - config2.length) < tolerance &&
+    Math.abs(config1.width - config2.width) < tolerance &&
+    config1.numberOfSlabs === config2.numberOfSlabs
+  );
+}
+
 export async function POST(request: NextRequest) {
   try {
     const {
+      barcode,
       marbleType,
-      quantity,
+      shade,
+      slabSizeLength,
+      slabSizeWidth,
+      numberOfSlabs,
       reason,
-      requestedBy,
       notes,
     } = await request.json();
 
     // Validation
-    if (!marbleType || !quantity || !reason) {
+    if (!marbleType || !shade || !slabSizeLength || !slabSizeWidth || !numberOfSlabs || !reason) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Missing required fields: marbleType, shade, slabSizeLength, slabSizeWidth, numberOfSlabs, and reason are required' },
         { status: 400 }
       );
     }
 
-    if (quantity <= 0) {
+    const length = parseFloat(slabSizeLength);
+    const width = parseFloat(slabSizeWidth);
+    const slabs = parseInt(numberOfSlabs.toString(), 10);
+
+    if (isNaN(length) || length <= 0 || isNaN(width) || width <= 0 || isNaN(slabs) || slabs <= 0) {
       return NextResponse.json(
-        { error: 'Quantity must be greater than 0' },
+        { error: 'Invalid slab dimensions or number of slabs. All values must be positive numbers.' },
         { status: 400 }
       );
     }
 
-    // Find ALL marbles of this type (across all batches/locations)
+    // Calculate total quantity to remove
+    const quantityToRemove = length * width * slabs;
+
+    // Find marbles matching marble type and shade
+    const whereClause: any = {
+      marbleType,
+      color: shade, // Shade is stored in color field
+    };
+
+    // If barcode is provided, also filter by barcode
+    if (barcode) {
+      whereClause.barcode = barcode;
+    }
+
     const marbles = await prisma.marble.findMany({
-      where: {
-        marbleType,
-      },
+      where: whereClause,
       orderBy: {
-        updatedAt: 'asc', // Remove from oldest batches first (FIFO)
+        updatedAt: 'asc', // Remove from oldest first (FIFO)
       },
     });
 
     if (!marbles || marbles.length === 0) {
       return NextResponse.json(
-        { error: 'Marble type not found' },
+        { error: `No stock found for marble type "${marbleType}" with shade "${shade}"${barcode ? ` and barcode "${barcode}"` : ''}` },
         { status: 404 }
       );
     }
 
-    // Calculate total available quantity across all batches
-    const totalAvailable = marbles.reduce((sum, m) => sum + m.quantity, 0);
+    // Target slab configuration to match
+    const targetConfig = {
+      length,
+      width,
+      numberOfSlabs: slabs,
+    };
 
-    if (totalAvailable < quantity) {
+    // Find marbles with matching slab configuration
+    const matchingMarbles = marbles.filter((marble) => {
+      const slabInfo = parseSlabInfo(marble.notes);
+      if (!slabInfo) return false;
+      return slabConfigMatches(slabInfo, targetConfig);
+    });
+
+    if (matchingMarbles.length === 0) {
+      // Provide helpful error message
+      const availableConfigs = marbles
+        .map((m) => {
+          const info = parseSlabInfo(m.notes);
+          return info ? `${info.length}x${info.width} (${info.numberOfSlabs} slabs)` : null;
+        })
+        .filter(Boolean)
+        .join(', ');
+      
       return NextResponse.json(
-        { error: 'Insufficient stock available' },
+        { 
+          error: `No matching slab configuration found. Requested: ${length}x${width} (${slabs} slabs). Available configurations: ${availableConfigs || 'None found in notes'}` 
+        },
+        { status: 404 }
+      );
+    }
+
+    // Calculate total available quantity for matching configurations
+    const totalAvailable = matchingMarbles.reduce((sum, m) => sum + m.quantity, 0);
+
+    if (totalAvailable < quantityToRemove) {
+      return NextResponse.json(
+        { 
+          error: `Insufficient stock available. Requested: ${quantityToRemove.toLocaleString()} sq ft, Available: ${totalAvailable.toLocaleString()} sq ft for configuration ${length}x${width} (${slabs} slabs)` 
+        },
         { status: 400 }
       );
     }
 
-    // Remove stock from batches, starting with the oldest (FIFO)
-    let remainingToRemove = quantity;
+    // Remove stock from matching marbles using FIFO
+    let remainingToRemove = quantityToRemove;
     const updatedMarbles = [];
     const transactionIds = [];
 
-    for (const marble of marbles) {
+    for (const marble of matchingMarbles) {
       if (remainingToRemove <= 0) break;
 
-      const quantityToRemove = Math.min(remainingToRemove, marble.quantity);
+      const quantityToRemoveFromThis = Math.min(remainingToRemove, marble.quantity);
       
       const updatedMarble = await prisma.marble.update({
         where: { id: marble.id },
         data: {
           quantity: {
-            decrement: quantityToRemove,
+            decrement: quantityToRemoveFromThis,
           },
           updatedAt: new Date(),
         },
       });
 
       updatedMarbles.push(updatedMarble);
-      remainingToRemove -= quantityToRemove;
+      remainingToRemove -= quantityToRemoveFromThis;
 
-      // Create stock transaction for this batch
+      // Create stock transaction
       const transaction = await prisma.stockTransaction.create({
         data: {
           marbleId: marble.id,
           type: 'OUT',
-          quantity: quantityToRemove,
+          quantity: quantityToRemoveFromThis,
           reason: reason || null,
-          requestedBy: requestedBy || null,
           notes: notes || null,
         },
       });
       transactionIds.push(transaction.id);
 
-      // Update status based on new quantity for this batch
+      // Update status based on new quantity
       let status = 'In Stock';
       if (updatedMarble.quantity < 100) {
         status = 'Low Stock';
@@ -105,9 +193,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Calculate total remaining across all batches
+    // Calculate total remaining for this marble type and shade
     const allMarbles = await prisma.marble.findMany({
-      where: { marbleType },
+      where: {
+        marbleType,
+        color: shade,
+      },
     });
     const totalRemaining = allMarbles.reduce((sum, m) => sum + m.quantity, 0);
 
@@ -118,24 +209,35 @@ export async function POST(request: NextRequest) {
       await prisma.notification.create({
         data: {
           type: 'low-stock',
-          message: `Low stock alert: ${marbleType} is ${notificationStatus.toLowerCase()} (${totalRemaining} ${unit} remaining across all batches)`,
+          message: `Low stock alert: ${marbleType} (${shade}) is ${notificationStatus.toLowerCase()} (${totalRemaining} ${unit} remaining)`,
           read: false,
         },
       });
     }
 
-    // Return the first updated marble (for backward compatibility)
     return NextResponse.json({ 
       success: true, 
-      marble: updatedMarbles[0] || marbles[0],
-      totalRemaining 
+      marble: updatedMarbles[0] || matchingMarbles[0],
+      totalRemaining,
+      removedQuantity: quantityToRemove,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error removing stock:', error);
+    
+    // Return more specific error messages
+    let errorMessage = 'Failed to remove stock';
+    
+    if (error.code === 'P2002') {
+      errorMessage = 'A record with this information already exists. Please check for duplicates.';
+    } else if (error.message) {
+      errorMessage = error.message;
+    } else if (typeof error === 'string') {
+      errorMessage = error;
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to remove stock' },
+      { error: errorMessage },
       { status: 500 }
     );
   }
 }
-
