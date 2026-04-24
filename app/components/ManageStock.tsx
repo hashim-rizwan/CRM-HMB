@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, Minus, Save, Trash2, Scan, Barcode, Package } from 'lucide-react';
+import { Plus, Minus, Save, Trash2, Scan, Barcode, Package, Camera, Keyboard } from 'lucide-react';
 import { stockAPI, inventoryAPI, marblesAPI } from '@/lib/api';
+import { CameraScanner } from './CameraScanner';
 
 interface ManageStockProps {
   searchQuery?: string;
@@ -12,6 +13,7 @@ interface ManageStockProps {
 export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStockProps) {
   const [activeTab, setActiveTab] = useState<'add' | 'new-item' | 'remove' | 'reserve'>('add');
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
+  const [scanMode, setScanMode] = useState<'camera' | 'manual'>('camera');
   const [scannedBarcode, setScannedBarcode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1812,58 +1814,142 @@ export function ManageStock({ searchQuery = '', userRole = 'Staff' }: ManageStoc
 
       {/* Barcode Scanner Modal */}
       {showBarcodeScanner && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-md w-full p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-[#1F2937] dark:text-white">Barcode Scanner</h3>
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-sm">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-800">
+              <h3 className="text-base font-semibold text-gray-900 dark:text-white">Scan Barcode</h3>
               <button
                 onClick={() => setShowBarcodeScanner(false)}
-                className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-500 dark:text-gray-400"
               >
                 ✕
               </button>
             </div>
 
-            <div className="mb-6">
-              <div className="bg-gray-100 dark:bg-gray-800 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-8 flex flex-col items-center justify-center">
-                <Barcode className="w-20 h-20 text-gray-400 dark:text-gray-500 mb-4" />
-                <p className="text-sm text-gray-600 dark:text-gray-400 text-center mb-2">Position barcode in scanner view</p>
-                <p className="text-xs text-gray-500 dark:text-gray-500 text-center">Scanner ready...</p>
-              </div>
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Or enter barcode manually:
-              </label>
-              <input
-                type="text"
-                value={scannedBarcode}
-                onChange={(e) => setScannedBarcode(e.target.value)}
-                placeholder="Enter barcode number"
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && scannedBarcode) {
-                    handleBarcodeScanned(scannedBarcode);
-                  }
-                }}
-              />
-            </div>
-
-            <div className="flex gap-3">
+            {/* Mode tabs */}
+            <div className="flex mx-5 mt-4 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 gap-1">
               <button
-                onClick={() => setShowBarcodeScanner(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                onClick={() => setScanMode('camera')}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  scanMode === 'camera'
+                    ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                }`}
               >
-                Cancel
+                <Camera className="w-4 h-4" />
+                Camera
               </button>
               <button
-                onClick={() => scannedBarcode && handleBarcodeScanned(scannedBarcode)}
-                disabled={!scannedBarcode}
-                className="flex-1 px-4 py-2 bg-[#2563EB] dark:bg-blue-600 text-white rounded-lg hover:bg-[#1E40AF] dark:hover:bg-blue-700 transition-colors disabled:bg-gray-300 dark:disabled:bg-gray-700 disabled:cursor-not-allowed disabled:text-gray-200 dark:disabled:text-gray-400"
+                onClick={() => setScanMode('manual')}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  scanMode === 'manual'
+                    ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                }`}
               >
-                Confirm
+                <Keyboard className="w-4 h-4" />
+                Manual
               </button>
+            </div>
+
+            <div className="p-5">
+              {scanMode === 'camera' ? (
+                <CameraScanner
+                  onScanned={(barcode) => {
+                    setShowBarcodeScanner(false);
+                    handleBarcodeScanned(barcode);
+                  }}
+                  onClose={() => setShowBarcodeScanner(false)}
+                />
+              ) : (
+                <div className="flex flex-col gap-4">
+                  {/* Scanner visual */}
+                  <div className="relative bg-gray-950 rounded-xl overflow-hidden h-36 flex items-center justify-center">
+                    {/* Simulated barcode bars in background */}
+                    <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none select-none gap-[2px] px-6">
+                      {Array.from({ length: 42 }).map((_, i) => (
+                        <div
+                          key={i}
+                          className="bg-white rounded-sm"
+                          style={{ width: i % 3 === 0 ? 3 : i % 5 === 0 ? 2 : 1, height: i % 7 === 0 ? '60%' : '80%' }}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Scan zone corners */}
+                    <div className="relative w-48 h-20 flex-shrink-0">
+                      <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-[#2563EB]" />
+                      <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-[#2563EB]" />
+                      <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-[#2563EB]" />
+                      <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-[#2563EB]" />
+
+                      {/* Animated scan line */}
+                      {!scannedBarcode && (
+                        <div className="absolute inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-[#2563EB] to-transparent animate-scanline" />
+                      )}
+
+                      {/* Scanned checkmark */}
+                      {scannedBarcode && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
+                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Status label */}
+                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2">
+                      {scannedBarcode ? (
+                        <span className="text-[11px] text-green-400 font-mono">{scannedBarcode}</span>
+                      ) : (
+                        <span className="text-[11px] text-gray-400 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#2563EB] animate-pulse inline-block" />
+                          Ready — point scanner here
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <input
+                    type="text"
+                    value={scannedBarcode}
+                    onChange={(e) => setScannedBarcode(e.target.value)}
+                    placeholder="Scan or type barcode…"
+                    autoFocus
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:bg-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 font-mono"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && scannedBarcode) {
+                        setShowBarcodeScanner(false);
+                        handleBarcodeScanned(scannedBarcode);
+                      }
+                    }}
+                  />
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setShowBarcodeScanner(false)}
+                      className="flex-1 px-4 py-2.5 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (scannedBarcode) {
+                          setShowBarcodeScanner(false);
+                          handleBarcodeScanned(scannedBarcode);
+                        }
+                      }}
+                      disabled={!scannedBarcode}
+                      className="flex-1 px-4 py-2.5 bg-[#2563EB] text-white rounded-xl hover:bg-[#1E40AF] transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium"
+                    >
+                      Confirm
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
