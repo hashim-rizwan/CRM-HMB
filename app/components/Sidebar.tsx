@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image';
 import { Package, Plus, Minus, BarChart3, ArrowLeftRight, Bell, Settings as SettingsIcon, Users, Scan, User, History, Bookmark, FileText } from 'lucide-react';
 
 interface SidebarProps {
@@ -31,9 +32,19 @@ export function Sidebar({ activeScreen, setActiveScreen, darkMode = false, userR
   return (
     <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#661B0F] text-white flex flex-col h-screen transition-transform duration-300 md:relative md:translate-x-0 md:z-auto ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
       {/* Logo/Brand */}
-      <div className="px-6 py-6 border-b border-[#4D140B]">
-        <h1 className="text-xl font-semibold">Haqeeq Marbles</h1>
-        <p className="text-sm text-red-100 mt-1">Inventory System</p>
+      <div className="px-4 py-5 border-b border-[#4D140B]">
+        <div className="mb-3">
+          <Image
+            src="/images/haqeeq-logo.png"
+            alt="Haqeeq Marbles"
+            width={280}
+            height={112}
+            className="h-14 w-full object-contain object-left"
+            priority
+          />
+        </div>
+        <h1 className="text-lg font-semibold leading-tight">Haqeeq Marbles</h1>
+        <p className="text-sm text-red-100 mt-0.5">Inventory System</p>
       </div>
 
       {/* Navigation */}

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 import { Bell, Search, User, LogOut, AlertTriangle, CheckCircle, Info, Package, Clock, X, Moon, Sun, Menu } from 'lucide-react';
 import { notificationAPI } from '@/lib/api';
 
@@ -130,7 +131,18 @@ export function TopBar({ title, searchQuery, setSearchQuery, username, onLogout,
               <Menu className="w-5 h-5 text-gray-600 dark:text-gray-300" />
             </button>
           )}
-          <div className="min-w-0">
+          <div className="min-w-0 flex items-start gap-3">
+            <div className="hidden sm:block flex-shrink-0 mt-0.5 rounded-md bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-1 shadow-sm">
+              <Image
+                src="/images/haqeeq-logo.png"
+                alt=""
+                width={100}
+                height={40}
+                className="h-8 w-auto object-contain"
+                aria-hidden
+              />
+            </div>
+            <div className="min-w-0">
             <h2 className="text-xl md:text-2xl font-semibold text-[#1F2937] dark:text-white truncate">{title}</h2>
             <p className="hidden sm:block text-sm text-gray-500 dark:text-gray-400 mt-1">
               {new Date().toLocaleDateString('en-US', {
@@ -140,6 +152,7 @@ export function TopBar({ title, searchQuery, setSearchQuery, username, onLogout,
                 day: 'numeric'
               })}
             </p>
+            </div>
           </div>
         </div>
 
