@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { responseIfDatabaseUnavailable } from '@/lib/prismaErrors';
 
 export async function GET(request: NextRequest) {
   try {
@@ -260,6 +261,8 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('Error fetching transactions:', error);
+    const dbError = responseIfDatabaseUnavailable(error);
+    if (dbError) return dbError;
     return NextResponse.json(
       { error: `Failed to fetch transactions: ${error.message}` },
       { status: 500 }

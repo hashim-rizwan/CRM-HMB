@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { responseIfDatabaseUnavailable } from '@/lib/prismaErrors';
 
 export async function GET(
   request: NextRequest,
@@ -25,6 +26,8 @@ export async function GET(
     return NextResponse.json({ success: true, user: userWithoutPassword });
   } catch (error) {
     console.error('Error fetching user:', error);
+    const dbError = responseIfDatabaseUnavailable(error);
+    if (dbError) return dbError;
     return NextResponse.json(
       { error: 'Failed to fetch user' },
       { status: 500 }
@@ -58,6 +61,8 @@ export async function PUT(
     return NextResponse.json({ success: true, user: userWithoutPassword });
   } catch (error) {
     console.error('Error updating user:', error);
+    const dbError = responseIfDatabaseUnavailable(error);
+    if (dbError) return dbError;
     return NextResponse.json(
       { error: 'Failed to update user' },
       { status: 500 }
@@ -91,6 +96,8 @@ export async function PATCH(
     return NextResponse.json({ success: true, user: userWithoutPassword });
   } catch (error) {
     console.error('Error updating user status:', error);
+    const dbError = responseIfDatabaseUnavailable(error);
+    if (dbError) return dbError;
     return NextResponse.json(
       { error: 'Failed to update user status' },
       { status: 500 }

@@ -24,7 +24,10 @@ export function Login({ onLogin }: LoginProps) {
     setError(null);
 
     try {
-      const response = await authAPI.login(formData.username, formData.password);
+      const response = await authAPI.login(
+        formData.username.trim(),
+        formData.password
+      );
       
       if (response.success && response.user) {
         onLogin(response.user.username, response.user);

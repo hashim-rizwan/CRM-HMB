@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { responseIfDatabaseUnavailable } from '@/lib/prismaErrors';
 
 export async function POST(request: NextRequest) {
   try {
@@ -273,6 +274,8 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('Error restoring backup:', error);
+    const dbError = responseIfDatabaseUnavailable(error);
+    if (dbError) return dbError;
     return NextResponse.json(
       { error: `Failed to restore backup: ${error.message || 'Please ensure the backup file is valid.'}` },
       { status: 500 }

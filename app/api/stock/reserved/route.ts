@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { responseIfDatabaseUnavailable } from '@/lib/prismaErrors';
 
 export async function GET(request: NextRequest) {
   try {
@@ -85,6 +86,8 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('Error fetching reserved stock:', error);
+    const dbError = responseIfDatabaseUnavailable(error);
+    if (dbError) return dbError;
     return NextResponse.json(
       { error: 'Failed to fetch reserved stock' },
       { status: 500 }

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import bcrypt from 'bcryptjs';
+import { responseIfDatabaseUnavailable } from '@/lib/prismaErrors';
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,27 +26,38 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify current password (currently plain text - should be hashed in production)
-    if (user.password !== currentPassword) {
+    // Verify current password — supports both bcrypt hashes and legacy plain-text
+    const isHashed = user.password.startsWith('$2');
+    const currentMatch = isHashed
+      ? await bcrypt.compare(currentPassword, user.password)
+      : user.password === currentPassword;
+
+    if (!currentMatch) {
       return NextResponse.json(
         { error: 'Current password is incorrect' },
         { status: 401 }
       );
     }
 
-    // Check if new password is different from current password
-    if (user.password === newPassword) {
+    // Ensure new password differs from current
+    const sameAsNew = isHashed
+      ? await bcrypt.compare(newPassword, user.password)
+      : user.password === newPassword;
+
+    if (sameAsNew) {
       return NextResponse.json(
         { error: 'New password must be different from current password' },
         { status: 400 }
       );
     }
 
+    const hashedNew = await bcrypt.hash(newPassword, 12);
+
     // Update password
     await prisma.user.update({
       where: { username },
       data: {
-        password: newPassword,
+        password: hashedNew,
         lastActive: new Date(),
       },
     });
@@ -55,6 +68,8 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Error changing password:', error);
+    const dbError = responseIfDatabaseUnavailable(error);
+    if (dbError) return dbError;
     return NextResponse.json(
       { error: 'Failed to change password' },
       { status: 500 }

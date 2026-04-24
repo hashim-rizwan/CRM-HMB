@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { responseIfDatabaseUnavailable } from '@/lib/prismaErrors';
 
 export async function POST(
   request: NextRequest,
@@ -63,6 +64,8 @@ export async function POST(
     });
   } catch (error) {
     console.error('Error checking out reservation:', error);
+    const dbError = responseIfDatabaseUnavailable(error);
+    if (dbError) return dbError;
     return NextResponse.json(
       { error: 'Failed to checkout reservation' },
       { status: 500 }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { responseIfDatabaseUnavailable } from '@/lib/prismaErrors';
 
 export async function GET() {
   try {
@@ -68,8 +69,10 @@ export async function GET() {
     });
   } catch (error) {
     console.error('Error fetching stats:', error);
+    const db = responseIfDatabaseUnavailable(error);
+    if (db) return db;
     return NextResponse.json(
-      { error: 'Failed to fetch stats' },
+      { error: 'Failed to fetch stats', success: false },
       { status: 500 }
     );
   }

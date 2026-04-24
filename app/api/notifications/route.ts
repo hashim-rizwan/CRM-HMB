@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { responseIfDatabaseUnavailable } from '@/lib/prismaErrors';
 
 export async function GET() {
   try {
@@ -11,6 +12,8 @@ export async function GET() {
     return NextResponse.json({ success: true, notifications });
   } catch (error) {
     console.error('Error fetching notifications:', error);
+    const dbError = responseIfDatabaseUnavailable(error);
+    if (dbError) return dbError;
     return NextResponse.json(
       { error: 'Failed to fetch notifications' },
       { status: 500 }
@@ -39,6 +42,8 @@ export async function PATCH(request: NextRequest) {
     }
   } catch (error) {
     console.error('Error updating notification:', error);
+    const dbError = responseIfDatabaseUnavailable(error);
+    if (dbError) return dbError;
     return NextResponse.json(
       { error: 'Failed to update notification' },
       { status: 500 }

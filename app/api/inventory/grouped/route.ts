@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { responseIfDatabaseUnavailable } from '@/lib/prismaErrors';
 
 export async function GET(request: NextRequest) {
   try {
@@ -163,10 +164,12 @@ export async function GET(request: NextRequest) {
       success: true,
       marbleTypes: filteredMarbleTypes,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error fetching grouped inventory:', error);
+    const db = responseIfDatabaseUnavailable(error);
+    if (db) return db;
     return NextResponse.json(
-      { error: `Failed to fetch inventory: ${error.message}` },
+      { error: 'Failed to fetch inventory', success: false },
       { status: 500 }
     );
   }

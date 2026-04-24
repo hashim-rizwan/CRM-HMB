@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { responseIfDatabaseUnavailable } from '@/lib/prismaErrors';
 
 export async function GET(request: NextRequest) {
   try {
@@ -46,8 +47,10 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('Error fetching inventory details:', error);
+    const db = responseIfDatabaseUnavailable(error);
+    if (db) return db;
     return NextResponse.json(
-      { error: 'Failed to fetch inventory details' },
+      { error: 'Failed to fetch inventory details', success: false },
       { status: 500 }
     );
   }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { responseIfDatabaseUnavailable } from '@/lib/prismaErrors';
 
 // GET current user's profile by username
 export async function GET(request: NextRequest) {
@@ -30,6 +31,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: true, user: userWithoutPassword });
   } catch (error) {
     console.error('Error fetching user profile:', error);
+    const dbError = responseIfDatabaseUnavailable(error);
+    if (dbError) return dbError;
     return NextResponse.json(
       { error: 'Failed to fetch user profile' },
       { status: 500 }
@@ -92,6 +95,8 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ success: true, user: userWithoutPassword });
   } catch (error) {
     console.error('Error updating user profile:', error);
+    const dbError = responseIfDatabaseUnavailable(error);
+    if (dbError) return dbError;
     return NextResponse.json(
       { error: 'Failed to update user profile' },
       { status: 500 }

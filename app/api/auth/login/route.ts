@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { isDatabaseUnavailable, DB_UNAVAILABLE_USER_MESSAGE } from '@/lib/prismaErrors';
+import bcrypt from 'bcryptjs';
 
 export async function POST(request: NextRequest) {
   try {
-    const { username, password } = await request.json();
+    const body = await request.json();
+    const username = typeof body?.username === 'string' ? body.username.trim() : '';
+    // Do not trim password — leading/trailing spaces may be intentional
+    const password = typeof body?.password === 'string' ? body.password : '';
 
     if (!username || !password) {
       return NextResponse.json(
@@ -12,9 +17,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find user by username
-    const user = await prisma.user.findUnique({
-      where: { username },
+    // Case-insensitive username (avoids 401 when DB has "admin" and user types "Admin")
+    const user = await prisma.user.findFirst({
+      where: {
+        username: { equals: username, mode: 'insensitive' },
+      },
     });
 
     // Check if user exists
@@ -33,12 +40,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify password (currently plain text - should be hashed in production)
-    if (user.password !== password) {
+    // Verify password — supports both bcrypt hashes and legacy plain-text.
+    // On a plain-text match we re-hash transparently so the account is migrated.
+    const isHashed = user.password.startsWith('$2');
+    const passwordMatch = isHashed
+      ? await bcrypt.compare(password, user.password)
+      : user.password === password;
+
+    if (!passwordMatch) {
       return NextResponse.json(
         { error: 'Invalid username or password' },
         { status: 401 }
       );
+    }
+
+    // Migrate plain-text password to bcrypt on successful login
+    if (!isHashed) {
+      const hashed = await bcrypt.hash(password, 12);
+      await prisma.user.update({ where: { id: user.id }, data: { password: hashed } });
     }
 
     // Update lastActive timestamp
@@ -56,6 +75,9 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Error during login:', error);
+    if (isDatabaseUnavailable(error)) {
+      return NextResponse.json({ error: DB_UNAVAILABLE_USER_MESSAGE }, { status: 503 });
+    }
     return NextResponse.json(
       { error: 'Failed to authenticate' },
       { status: 500 }

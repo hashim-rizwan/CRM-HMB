@@ -1,57 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { responseIfDatabaseUnavailable } from '@/lib/prismaErrors';
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const month = searchParams.get('month') || new Date().toISOString().slice(0, 7); // YYYY-MM format
+    const month = searchParams.get('month') || new Date().toISOString().slice(0, 7);
 
-    // Get all stock transactions for the specified month
     const startDate = new Date(`${month}-01`);
     const endDate = new Date(startDate);
     endDate.setMonth(endDate.getMonth() + 1);
 
-    const transactions = await prisma.stockTransaction.findMany({
-      where: {
-        createdAt: {
-          gte: startDate,
-          lt: endDate,
-        },
-      },
-      include: {
-        marble: true,
-      },
-      orderBy: {
-        createdAt: 'asc',
-      },
+    // Usage by type for the requested month (OUT transactions)
+    const monthTransactions = await prisma.stockTransaction.findMany({
+      where: { createdAt: { gte: startDate, lt: endDate } },
+      include: { marble: true },
+      orderBy: { createdAt: 'asc' },
     });
 
-    // Calculate monthly data (grouped by month)
-    const monthlyData = [];
-    const months = ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const currentMonthIndex = new Date().getMonth();
-    
-    for (let i = 0; i < 6; i++) {
-      const monthIndex = (currentMonthIndex - 5 + i + 12) % 12;
-      const monthName = months[monthIndex];
-      monthlyData.push({
-        month: monthName,
-        added: Math.floor(Math.random() * 2000) + 2000, // Placeholder - calculate from transactions
-        removed: Math.floor(Math.random() * 2000) + 2000,
-        net: 0,
-      });
-    }
-
-    // Calculate usage by type
     const usageByTypeMap = new Map<string, number>();
-    transactions.forEach((transaction) => {
-      if (transaction.type === 'OUT') {
-        const type = transaction.marble.marbleType;
-        usageByTypeMap.set(type, (usageByTypeMap.get(type) || 0) + transaction.quantity);
+    monthTransactions.forEach((t) => {
+      if (t.type === 'OUT') {
+        const type = t.marble.marbleType;
+        usageByTypeMap.set(type, (usageByTypeMap.get(type) || 0) + t.quantity);
       }
     });
 
-    const totalUsage = Array.from(usageByTypeMap.values()).reduce((sum, val) => sum + val, 0);
+    const totalUsage = Array.from(usageByTypeMap.values()).reduce((s, v) => s + v, 0);
     const usageByType = Array.from(usageByTypeMap.entries())
       .map(([type, usage]) => ({
         type,
@@ -60,36 +35,74 @@ export async function GET(request: NextRequest) {
       }))
       .sort((a, b) => b.usage - a.usage);
 
-    // Calculate trend data (inventory levels over time)
+    // Last 6 months — real IN/OUT totals and running inventory trend
+    const monthlyData = [];
     const trendData = [];
-    const marbles = await prisma.marble.findMany({
-      include: {
-        stockEntries: true,
-      },
+
+    // Get all transactions up to end of last 6-month window for trend calculation
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+    sixMonthsAgo.setDate(1);
+    sixMonthsAgo.setHours(0, 0, 0, 0);
+
+    const allTransactions = await prisma.stockTransaction.findMany({
+      where: { createdAt: { gte: sixMonthsAgo } },
+      orderBy: { createdAt: 'asc' },
     });
-    const totalInventory = marbles.reduce((sum, m) => 
-      sum + m.stockEntries.reduce((entrySum, e) => entrySum + e.quantity, 0), 0
-    );
-    
-    for (let i = 0; i < 6; i++) {
-      trendData.push({
-        month: months[(currentMonthIndex - 5 + i + 12) % 12],
-        inventory: Math.round(totalInventory * (0.8 + Math.random() * 0.2)), // Placeholder
+
+    // Baseline inventory before the 6-month window
+    const allStockEntries = await prisma.stockEntry.findMany({ select: { quantity: true } });
+    const currentTotal = allStockEntries.reduce((s, e) => s + e.quantity, 0);
+
+    // Compute inventory at end of each month by working backwards from current
+    const monthlyNet: Map<string, { added: number; removed: number }> = new Map();
+    allTransactions.forEach((t) => {
+      const key = t.createdAt.toISOString().slice(0, 7);
+      if (!monthlyNet.has(key)) monthlyNet.set(key, { added: 0, removed: 0 });
+      const entry = monthlyNet.get(key)!;
+      if (t.type === 'IN') entry.added += t.quantity;
+      else entry.removed += t.quantity;
+    });
+
+    // Build 6-month array
+    const now = new Date();
+    let runningInventory = currentTotal;
+
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const monthName = d.toLocaleString('en-US', { month: 'short' });
+      const net = monthlyNet.get(key) || { added: 0, removed: 0 };
+      monthlyData.push({
+        month: monthName,
+        added: Math.round(net.added),
+        removed: Math.round(net.removed),
+        net: Math.round(net.added - net.removed),
       });
     }
 
-    return NextResponse.json({
-      success: true,
-      monthlyData,
-      usageByType,
-      trendData,
-    });
+    // Trend: reconstruct inventory level at the END of each month
+    // Work forward from baseline (currentTotal minus future nets)
+    let inv = currentTotal;
+    const orderedMonths = [];
+    for (let i = 0; i <= 5; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      orderedMonths.unshift({ key, month: d.toLocaleString('en-US', { month: 'short' }) });
+    }
+    // Walk backwards to reconstruct historical levels
+    for (let i = orderedMonths.length - 1; i >= 0; i--) {
+      const { key, month } = orderedMonths[i];
+      trendData.unshift({ month, inventory: Math.round(inv) });
+      const net = monthlyNet.get(key) || { added: 0, removed: 0 };
+      inv = inv - net.added + net.removed; // undo this month going backwards
+    }
+
+    return NextResponse.json({ success: true, monthlyData, usageByType, trendData });
   } catch (error) {
     console.error('Error fetching monthly report:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch monthly report' },
-      { status: 500 }
-    );
+    const dbError = responseIfDatabaseUnavailable(error);
+    if (dbError) return dbError;
+    return NextResponse.json({ error: 'Failed to fetch monthly report' }, { status: 500 });
   }
 }
-

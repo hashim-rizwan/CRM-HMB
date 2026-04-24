@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { responseIfDatabaseUnavailable } from '@/lib/prismaErrors';
 
 export async function GET(request: NextRequest) {
   try {
@@ -48,8 +49,10 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('Error fetching marble types:', error);
+    const db = responseIfDatabaseUnavailable(error);
+    if (db) return db;
     return NextResponse.json(
-      { error: 'Failed to fetch marble types' },
+      { error: 'Failed to fetch marble types', success: false },
       { status: 500 }
     );
   }

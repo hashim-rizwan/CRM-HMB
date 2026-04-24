@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { responseIfDatabaseUnavailable } from '@/lib/prismaErrors';
 
 // Generate unique barcode for a specific marble type and shade
 // Format: {PREFIX}-{SHADE}-{RANDOM}
@@ -202,8 +203,8 @@ export async function POST(request: NextRequest) {
     }, { status: 201 });
   } catch (error: any) {
     console.error('Error creating marble type:', error);
-    
-    // Handle Prisma unique constraint errors
+    const dbError = responseIfDatabaseUnavailable(error);
+    if (dbError) return dbError;
     if (error.code === 'P2002') {
       return NextResponse.json(
         { error: 'A marble entry with this marble type or barcode already exists. Please try again.' },

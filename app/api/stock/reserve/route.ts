@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { responseIfDatabaseUnavailable } from '@/lib/prismaErrors';
 import {
   allocateSlabs,
   hasEnoughQuantity,
@@ -323,7 +324,8 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('Error reserving stock:', error);
-
+    const dbError = responseIfDatabaseUnavailable(error);
+    if (dbError) return dbError;
     let errorMessage = 'Failed to reserve stock';
     if (error.code === 'P2002') {
       errorMessage = 'A record with this information already exists. Please check for duplicates.';

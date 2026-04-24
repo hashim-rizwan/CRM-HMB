@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import bcrypt from 'bcryptjs';
+import { responseIfDatabaseUnavailable } from '@/lib/prismaErrors';
 
 export async function GET() {
   try {
@@ -13,6 +15,8 @@ export async function GET() {
     return NextResponse.json({ success: true, users: usersWithoutPasswords });
   } catch (error) {
     console.error('Error fetching users:', error);
+    const dbError = responseIfDatabaseUnavailable(error);
+    if (dbError) return dbError;
     return NextResponse.json(
       { error: 'Failed to fetch users' },
       { status: 500 }
@@ -46,10 +50,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const hashedPassword = await bcrypt.hash(password, 12);
+
     const user = await prisma.user.create({
       data: {
         username,
-        password, // In production, hash this password
+        password: hashedPassword,
         fullName,
         email,
         phone: phone || null,
@@ -67,6 +73,8 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error('Error creating user:', error);
+    const dbError = responseIfDatabaseUnavailable(error);
+    if (dbError) return dbError;
     return NextResponse.json(
       { error: 'Failed to create user' },
       { status: 500 }
