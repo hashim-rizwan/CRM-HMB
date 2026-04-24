@@ -33,17 +33,19 @@ export function Sidebar({ activeScreen, setActiveScreen, darkMode = false, userR
     <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#661B0F] text-white flex flex-col h-screen transition-transform duration-300 md:relative md:translate-x-0 md:z-auto ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
       {/* Logo/Brand */}
       <div className="h-24 px-3 border-b border-[#4D140B] flex items-center gap-2">
-        <Image
-          src="/images/haqeeq-logo.png"
-          alt="Haqeeq Marbles"
-          width={240}
-          height={240}
-          className="h-20 w-20 object-contain shrink-0 scale-[1.8]"
-          priority
-        />
-        <div className="min-w-0 flex-1">
-          <h1 className="text-[15px] font-semibold leading-tight whitespace-nowrap">Haqeeq Marbles</h1>
-          <p className="text-xs text-red-100/80 mt-0.5 whitespace-nowrap">Inventory System</p>
+        <div className="relative h-[88px] w-[88px] shrink-0 overflow-hidden">
+          <Image
+            src="/images/haqeeq-logo.png"
+            alt="Haqeeq Marbles"
+            width={240}
+            height={240}
+            className="absolute inset-0 w-full h-full object-contain scale-[2.2]"
+            priority
+          />
+        </div>
+        <div className="min-w-0 flex-1 text-center -ml-3">
+          <h1 className="text-sm font-semibold leading-tight whitespace-nowrap">Haqeeq Marbles</h1>
+          <p className="text-[11px] text-red-100/80 mt-1 whitespace-nowrap">Inventory Management System</p>
         </div>
       </div>
 
