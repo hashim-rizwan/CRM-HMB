@@ -149,151 +149,105 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Process allocations and update stock entries
-    const updatedEntries = [];
-    const deletedEntryIds = [];
-    const newRemnantEntries = [];
-    const transactionIds = [];
+    // All DB writes are atomic
+    const { totalRemaining, shadeRemaining, updatedCount, deletedCount, remnantCount } =
+      await prisma.$transaction(async (tx) => {
+        const updatedEntries: unknown[] = [];
+        const deletedEntryIds: number[] = [];
+        const newRemnantEntries: unknown[] = [];
 
-    for (const allocation of allocationResult.allocations) {
-      const stockEntry = stockEntries.find(e => e.id === allocation.stockEntryId);
-      if (!stockEntry) continue;
+        for (const allocation of allocationResult.allocations) {
+          const stockEntry = stockEntries.find(e => e.id === allocation.stockEntryId);
+          if (!stockEntry) continue;
 
-      const { slabsUsed, quantityUsed, remainingSlabs, remainingLength, remainingWidth, allocationType } = allocation;
+          const { slabsUsed, quantityUsed, remainingSlabs, remainingLength, remainingWidth, allocationType } = allocation;
 
-      // Create transaction record
-      const transaction = await prisma.stockTransaction.create({
-        data: {
-          marbleId: marble.id,
-          type: 'OUT',
-          quantity: quantityUsed,
-          reason: reason || null,
-          notes: notes
-            ? `${notes} (Shade: ${shade}, ${slabsUsed} slab(s) of ${length}x${width} ft, Type: ${allocationType})`
-            : `Stock removed: ${slabsUsed} slab(s) of ${length}x${width} ft from ${stockEntry.slabSizeLength}x${stockEntry.slabSizeWidth} ft slabs (${allocationType})`,
-        },
-      });
-      transactionIds.push(transaction.id);
-
-      if (allocationType === 'exact') {
-        // Exact match - just reduce the number of slabs
-        if (remainingSlabs && remainingSlabs > 0) {
-          // Update the stock entry with remaining slabs
-          const remainingQuantity = remainingSlabs * stockEntry.slabSizeLength! * stockEntry.slabSizeWidth!;
-          const updated = await prisma.stockEntry.update({
-            where: { id: stockEntry.id },
+          await tx.stockTransaction.create({
             data: {
-              numberOfSlabs: remainingSlabs,
-              quantity: remainingQuantity,
-              updatedAt: new Date(),
+              marbleId: marble.id,
+              type: 'OUT',
+              quantity: quantityUsed,
+              reason: reason || null,
+              notes: notes
+                ? `${notes} (Shade: ${shade}, ${slabsUsed} slab(s) of ${length}x${width} ft, Type: ${allocationType})`
+                : `Stock removed: ${slabsUsed} slab(s) of ${length}x${width} ft from ${stockEntry.slabSizeLength}x${stockEntry.slabSizeWidth} ft slabs (${allocationType})`,
             },
           });
-          updatedEntries.push(updated);
-        } else {
-          // All slabs used - delete the entry
-          await prisma.stockEntry.delete({
-            where: { id: stockEntry.id },
-          });
-          deletedEntryIds.push(stockEntry.id);
-        }
-      } else {
-        // Cut/partial - need to handle cutting logic
-        // For now, we'll reduce the number of slabs and quantity
-        // In a more sophisticated system, you'd create new StockEntry records for remnants
-        
-        if (remainingSlabs && remainingSlabs > 0) {
-          // Some slabs remain - update the entry
-          const remainingQuantity = remainingSlabs * stockEntry.slabSizeLength! * stockEntry.slabSizeWidth!;
-          const updated = await prisma.stockEntry.update({
-            where: { id: stockEntry.id },
-            data: {
-              numberOfSlabs: remainingSlabs,
-              quantity: remainingQuantity,
-              updatedAt: new Date(),
-            },
-          });
-          updatedEntries.push(updated);
 
-          // If there are remnants from cutting, create a new StockEntry for them
-          // This is simplified - in practice, you'd want more sophisticated cutting logic
-          if (allocation.waste && allocation.waste > 0.1) { // Only create remnant if waste is significant (>0.1 sq ft)
-            // Calculate remnant dimensions (simplified - assumes rectangular cuts)
-            // In practice, you'd want to track actual cut patterns
-            const remnantArea = allocation.waste / slabsUsed; // Average waste per slab
-            if (remnantArea > 1) { // Only create remnant if > 1 sq ft
-              // Try to create a reasonable remnant entry
-              // This is a simplified approach - real cutting would be more complex
-              const remnantLength = remainingLength || stockEntry.slabSizeLength!;
-              const remnantWidth = remainingWidth || stockEntry.slabSizeWidth!;
-              
-              // Only create remnant if dimensions make sense
-              if (remnantLength > 0.5 && remnantWidth > 0.5) {
-                const remnantEntry = await prisma.stockEntry.create({
-                  data: {
-                    marbleId: marble.id,
-                    shade: shade,
-                    quantity: allocation.waste,
-                    slabSizeLength: remnantLength,
-                    slabSizeWidth: remnantWidth,
-                    numberOfSlabs: slabsUsed, // Number of remnant pieces
-                    notes: `Remnant from cutting ${slabsUsed} slab(s) to ${length}x${width} ft`,
-                  },
-                });
-                newRemnantEntries.push(remnantEntry);
+          if (remainingSlabs && remainingSlabs > 0) {
+            const remainingQuantity = remainingSlabs * stockEntry.slabSizeLength! * stockEntry.slabSizeWidth!;
+            const updated = await tx.stockEntry.update({
+              where: { id: stockEntry.id },
+              data: { numberOfSlabs: remainingSlabs, quantity: remainingQuantity, updatedAt: new Date() },
+            });
+            updatedEntries.push(updated);
+
+            // Create remnant entry for cut/partial allocations with significant waste
+            if (allocationType !== 'exact' && allocation.waste && allocation.waste > 0.1) {
+              const remnantArea = allocation.waste / slabsUsed;
+              if (remnantArea > 1) {
+                const remnantLength = remainingLength || stockEntry.slabSizeLength!;
+                const remnantWidth = remainingWidth || stockEntry.slabSizeWidth!;
+                if (remnantLength > 0.5 && remnantWidth > 0.5) {
+                  const remnantEntry = await tx.stockEntry.create({
+                    data: {
+                      marbleId: marble.id,
+                      shade,
+                      quantity: allocation.waste,
+                      slabSizeLength: remnantLength,
+                      slabSizeWidth: remnantWidth,
+                      numberOfSlabs: slabsUsed,
+                      notes: `Remnant from cutting ${slabsUsed} slab(s) to ${length}x${width} ft`,
+                    },
+                  });
+                  newRemnantEntries.push(remnantEntry);
+                }
               }
             }
+          } else {
+            await tx.stockEntry.delete({ where: { id: stockEntry.id } });
+            deletedEntryIds.push(stockEntry.id);
           }
-        } else {
-          // All slabs used - delete the entry
-          await prisma.stockEntry.delete({
-            where: { id: stockEntry.id },
-          });
-          deletedEntryIds.push(stockEntry.id);
         }
-      }
-    }
 
-    // Recalculate total quantity for this shade and update marble status
-    const remainingStockEntries = await prisma.stockEntry.findMany({
-      where: {
-        marbleId: marble.id,
-        shade: shade,
-      },
-    });
+        // Recalculate from DB — use ALL shades for marble status, shade-specific for notification
+        const allEntries = await tx.stockEntry.findMany({ where: { marbleId: marble.id } });
+        const totalRemaining = allEntries.reduce((s, e) => s + e.quantity, 0);
+        const shadeRemaining = allEntries.filter(e => e.shade === shade).reduce((s, e) => s + e.quantity, 0);
 
-    const totalRemaining = remainingStockEntries.reduce((sum, e) => sum + e.quantity, 0);
+        let newStatus = 'In Stock';
+        if (totalRemaining === 0) newStatus = 'Out of Stock';
+        else if (totalRemaining < 100) newStatus = 'Low Stock';
 
-    // Update marble status
-    let newStatus = 'In Stock';
-    if (totalRemaining === 0) {
-      newStatus = 'Out of Stock';
-    } else if (totalRemaining < 100) {
-      newStatus = 'Low Stock';
-    }
+        if (marble.status !== newStatus) {
+          await tx.marble.update({ where: { id: marble.id }, data: { status: newStatus } });
+        }
 
-    if (marble.status !== newStatus) {
-      await prisma.marble.update({
-        where: { id: marble.id },
-        data: { status: newStatus },
+        if (shadeRemaining < 100) {
+          const notifStatus = shadeRemaining === 0 ? 'Out of Stock' : 'Low Stock';
+          await tx.notification.create({
+            data: {
+              type: 'low-stock',
+              message: `Low stock alert: ${marbleType} (${shade}) is ${notifStatus.toLowerCase()} (${shadeRemaining.toFixed(2)} sq ft remaining)`,
+              read: false,
+            },
+          });
+        }
+
+        return {
+          totalRemaining,
+          shadeRemaining,
+          updatedCount: updatedEntries.length,
+          deletedCount: deletedEntryIds.length,
+          remnantCount: newRemnantEntries.length,
+        };
       });
-    }
-
-    // Create notification if stock is low
-    if (totalRemaining < 100) {
-      const notificationStatus = totalRemaining === 0 ? 'Out of Stock' : 'Low Stock';
-      await prisma.notification.create({
-        data: {
-          type: 'low-stock',
-          message: `Low stock alert: ${marbleType} (${shade}) is ${notificationStatus.toLowerCase()} (${totalRemaining.toFixed(2)} sq ft remaining)`,
-          read: false,
-        },
-      });
-    }
 
     return NextResponse.json({
       success: true,
       removedQuantity: allocationResult.totalQuantityAllocated,
       totalRemaining,
+      shadeRemaining,
       waste: allocationResult.totalWaste,
       allocations: allocationResult.allocations.map(a => ({
         stockEntryId: a.stockEntryId,
@@ -301,9 +255,9 @@ export async function POST(request: NextRequest) {
         quantityUsed: a.quantityUsed,
         allocationType: a.allocationType,
       })),
-      updatedEntries: updatedEntries.length,
-      deletedEntries: deletedEntryIds.length,
-      newRemnantEntries: newRemnantEntries.length,
+      updatedEntries: updatedCount,
+      deletedEntries: deletedCount,
+      newRemnantEntries: remnantCount,
     });
   } catch (error: any) {
     console.error('Error removing stock:', error);

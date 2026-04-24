@@ -22,6 +22,7 @@ export default function App() {
   const [activeScreen, setActiveScreen] = useState('dashboard')
   const [searchQuery, setSearchQuery] = useState('')
   const [darkMode, setDarkMode] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   // Load dark mode preference only (no auto-login on restart)
   useEffect(() => {
@@ -145,15 +146,28 @@ export default function App() {
 
   return (
     <div className="flex h-screen bg-[#F9FAFB] dark:bg-black overflow-hidden">
-      {/* Sidebar - Fixed Width */}
-      <Sidebar activeScreen={activeScreen} setActiveScreen={setActiveScreen} darkMode={darkMode} userRole={userRole} />
+      {/* Mobile overlay backdrop */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
-      {/* Main Content Area - Flexible */}
+      {/* Sidebar */}
+      <Sidebar
+        activeScreen={activeScreen}
+        setActiveScreen={(screen) => { setActiveScreen(screen); setSidebarOpen(false); }}
+        darkMode={darkMode}
+        userRole={userRole}
+        sidebarOpen={sidebarOpen}
+      />
+
+      {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Top Bar */}
-        <TopBar 
-          title={getScreenTitle()} 
-          searchQuery={searchQuery} 
+        <TopBar
+          title={getScreenTitle()}
+          searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
           username={username}
           onLogout={handleLogout}
@@ -162,9 +176,9 @@ export default function App() {
           darkMode={darkMode}
           toggleDarkMode={toggleDarkMode}
           showSearch={activeScreen === 'dashboard'}
+          onToggleSidebar={() => setSidebarOpen(prev => !prev)}
         />
 
-        {/* Scrollable Content */}
         <main className="flex-1 overflow-y-auto bg-[#F9FAFB] dark:bg-black">
           {renderContent()}
         </main>

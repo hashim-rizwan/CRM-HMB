@@ -7,9 +7,10 @@ interface SidebarProps {
   setActiveScreen: (screen: string) => void;
   darkMode?: boolean;
   userRole?: 'Admin' | 'Staff';
+  sidebarOpen?: boolean;
 }
 
-export function Sidebar({ activeScreen, setActiveScreen, darkMode = false, userRole = 'Staff' }: SidebarProps) {
+export function Sidebar({ activeScreen, setActiveScreen, darkMode = false, userRole = 'Staff', sidebarOpen = false }: SidebarProps) {
   const allMenuItems = [
     { id: 'dashboard', label: 'Inventory Dashboard', icon: Package },
     { id: 'manage-stock', label: 'Manage Stock', icon: ArrowLeftRight },
@@ -28,7 +29,7 @@ export function Sidebar({ activeScreen, setActiveScreen, darkMode = false, userR
   const menuItems = allMenuItems.filter(item => !item.adminOnly || userRole === 'Admin');
 
   return (
-    <div className="w-60 bg-[#661B0F] text-white flex flex-col h-screen">
+    <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#661B0F] text-white flex flex-col h-screen transition-transform duration-300 md:relative md:translate-x-0 md:z-auto ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
       {/* Logo/Brand */}
       <div className="px-6 py-6 border-b border-[#4D140B]">
         <h1 className="text-xl font-semibold">Haqeeq Marbles</h1>

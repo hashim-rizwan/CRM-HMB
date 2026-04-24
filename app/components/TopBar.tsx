@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react';
-import { Bell, Search, User, LogOut, AlertTriangle, CheckCircle, Info, Package, Clock, X, Moon, Sun } from 'lucide-react';
+import { Bell, Search, User, LogOut, AlertTriangle, CheckCircle, Info, Package, Clock, X, Moon, Sun, Menu } from 'lucide-react';
 import { notificationAPI } from '@/lib/api';
 
 interface Notification {
@@ -23,9 +23,10 @@ interface TopBarProps {
   darkMode?: boolean;
   toggleDarkMode?: () => void;
   showSearch?: boolean;
+  onToggleSidebar?: () => void;
 }
 
-export function TopBar({ title, searchQuery, setSearchQuery, username, onLogout, onNavigateToNotifications, unreadNotificationCount = 0, darkMode = false, toggleDarkMode, showSearch = false }: TopBarProps) {
+export function TopBar({ title, searchQuery, setSearchQuery, username, onLogout, onNavigateToNotifications, unreadNotificationCount = 0, darkMode = false, toggleDarkMode, showSearch = false, onToggleSidebar }: TopBarProps) {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -117,21 +118,32 @@ export function TopBar({ title, searchQuery, setSearchQuery, username, onLogout,
 
   const unreadCount = notifications.filter(n => !n.read).length;
   return (
-    <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-8 py-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold text-[#1F2937] dark:text-white">{title}</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            {new Date().toLocaleDateString('en-US', { 
-              weekday: 'long', 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric' 
-            })}
-          </p>
+    <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 md:px-8 py-3 md:py-4">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-3 min-w-0">
+          {onToggleSidebar && (
+            <button
+              onClick={onToggleSidebar}
+              className="md:hidden p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors flex-shrink-0"
+              aria-label="Toggle menu"
+            >
+              <Menu className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+            </button>
+          )}
+          <div className="min-w-0">
+            <h2 className="text-xl md:text-2xl font-semibold text-[#1F2937] dark:text-white truncate">{title}</h2>
+            <p className="hidden sm:block text-sm text-gray-500 dark:text-gray-400 mt-1">
+              {new Date().toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              })}
+            </p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">
           {/* Dark Mode Toggle */}
           {toggleDarkMode && (
             <button
@@ -156,7 +168,7 @@ export function TopBar({ title, searchQuery, setSearchQuery, username, onLogout,
                 placeholder="Search inventory..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg w-64 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:focus:ring-blue-500"
+                className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg w-40 sm:w-64 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:focus:ring-blue-500"
               />
             </div>
           )}
@@ -175,7 +187,7 @@ export function TopBar({ title, searchQuery, setSearchQuery, username, onLogout,
 
             {/* Notifications Dropdown */}
             {showNotifications && (
-              <div className="absolute right-0 mt-2 w-96 bg-white dark:bg-gray-900 rounded-lg shadow-lg border border-gray-200 dark:border-gray-800 z-50 max-h-[600px] flex flex-col">
+              <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] sm:w-96 bg-white dark:bg-gray-900 rounded-lg shadow-lg border border-gray-200 dark:border-gray-800 z-50 max-h-[600px] flex flex-col">
                 {/* Header */}
                 <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
                   <div>
