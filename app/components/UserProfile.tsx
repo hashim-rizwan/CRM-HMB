@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { User, Mail, Phone, Briefcase, Shield, Lock, LogOut, Save, Edit, X } from 'lucide-react';
 
 interface UserProfileProps {
@@ -9,6 +9,7 @@ interface UserProfileProps {
 export function UserProfile({ username, onLogout }: UserProfileProps) {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isEditingPassword, setIsEditingPassword] = useState(false);
+  const securitySectionRef = useRef<HTMLDivElement>(null);
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
@@ -70,6 +71,11 @@ export function UserProfile({ username, onLogout }: UserProfileProps) {
     setIsEditingPassword(false);
   };
 
+  const openSecuritySettings = () => {
+    setIsEditingPassword(true);
+    securitySectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   return (
     <div className="p-8">
       <div className="max-w-4xl mx-auto">
@@ -83,7 +89,10 @@ export function UserProfile({ username, onLogout }: UserProfileProps) {
           {/* User Info Card */}
           <div className="lg:col-span-2 space-y-6">
             {/* Profile Information */}
-            <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-8">
+            <div
+              ref={securitySectionRef}
+              className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-8"
+            >
               <h4 className="text-lg font-semibold text-[#1F2937] dark:text-white mb-6">Profile Information</h4>
 
               <div className="space-y-6">
@@ -186,7 +195,7 @@ export function UserProfile({ username, onLogout }: UserProfileProps) {
                 <h4 className="text-lg font-semibold text-[#1F2937] dark:text-white">Security Settings</h4>
                 {!isEditingPassword && (
                   <button
-                    onClick={() => setIsEditingPassword(true)}
+                    onClick={openSecuritySettings}
                     className="px-4 py-2 bg-[#2563EB] dark:bg-blue-600 text-white rounded-lg hover:bg-[#1E40AF] dark:hover:bg-blue-700 transition-colors flex items-center gap-2"
                   >
                     <Lock className="w-4 h-4" />
@@ -281,7 +290,10 @@ export function UserProfile({ username, onLogout }: UserProfileProps) {
                   Edit Profile
                 </button>
 
-                <button className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-2 font-medium">
+                <button
+                  onClick={openSecuritySettings}
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-2 font-medium"
+                >
                   <Shield className="w-4 h-4" />
                   Security Settings
                 </button>

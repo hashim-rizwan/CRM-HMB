@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react';
-import Image from 'next/image';
 import { Bell, Search, User, LogOut, AlertTriangle, CheckCircle, Info, Package, Clock, X, Moon, Sun, Menu } from 'lucide-react';
 import { notificationAPI } from '@/lib/api';
 
@@ -119,8 +118,8 @@ export function TopBar({ title, searchQuery, setSearchQuery, username, onLogout,
 
   const unreadCount = notifications.filter(n => !n.read).length;
   return (
-    <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 md:px-8 py-3 md:py-4">
-      <div className="flex items-center justify-between gap-2">
+    <div className="h-24 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 md:px-8 flex items-center">
+      <div className="w-full flex items-center justify-between gap-2">
         <div className="flex items-center gap-3 min-w-0">
           {onToggleSidebar && (
             <button
@@ -132,16 +131,6 @@ export function TopBar({ title, searchQuery, setSearchQuery, username, onLogout,
             </button>
           )}
           <div className="min-w-0 flex items-start gap-3">
-            <div className="hidden sm:block flex-shrink-0 mt-0.5 rounded-md bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-1 shadow-sm">
-              <Image
-                src="/images/haqeeq-logo.png"
-                alt=""
-                width={100}
-                height={40}
-                className="h-8 w-auto object-contain"
-                aria-hidden
-              />
-            </div>
             <div className="min-w-0">
             <h2 className="text-xl md:text-2xl font-semibold text-[#1F2937] dark:text-white truncate">{title}</h2>
             <p className="hidden sm:block text-sm text-gray-500 dark:text-gray-400 mt-1">

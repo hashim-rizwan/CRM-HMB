@@ -115,7 +115,7 @@ export function TransactionHistory() {
             `"${txn.marbleType}"`,
             `"${txn.color}"`,
             txn.quantity,
-            txn.unit || 'kg',
+            txn.unit || 'sq ft',
             `"${txn.performedBy}"`,
             txn.timestamp,
             txn.reason ? `"${txn.reason}"` : '',
@@ -158,15 +158,15 @@ export function TransactionHistory() {
     .filter((t) => t.type === 'removed')
     .reduce((sum, t) => sum + t.quantity, 0);
   
-  // Get the unit for display (use the most common unit or default to kg)
+  // Get the unit for display (use the most common unit or default to sq ft)
   const getDisplayUnit = () => {
-    if (filteredTransactions.length === 0) return 'kg';
-    const units = filteredTransactions.map(t => t.unit || 'kg');
+    if (filteredTransactions.length === 0) return 'sq ft';
+    const units = filteredTransactions.map(t => t.unit || 'sq ft');
     const unitCounts = units.reduce((acc, unit) => {
       acc[unit] = (acc[unit] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
-    return Object.keys(unitCounts).reduce((a, b) => unitCounts[a] > unitCounts[b] ? a : b, 'kg');
+    return Object.keys(unitCounts).reduce((a, b) => unitCounts[a] > unitCounts[b] ? a : b, 'sq ft');
   };
   
   const displayUnit = getDisplayUnit();
@@ -350,7 +350,7 @@ export function TransactionHistory() {
                     Marble
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Quantity (kg)
+                    Quantity (sq ft)
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Performed By
@@ -415,7 +415,7 @@ export function TransactionHistory() {
                           }`}
                         >
                           {transaction.type === 'added' ? '+' : '-'}
-                          {transaction.quantity} {transaction.unit || 'kg'}
+                          {transaction.quantity} {transaction.unit || 'sq ft'}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">

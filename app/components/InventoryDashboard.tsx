@@ -216,6 +216,53 @@ export function InventoryDashboard({ searchQuery = '', userRole = 'Staff' }: Inv
                 </tr>
               ) : filtered.map((mt) => {
                 const isOpen = expandedMarbles.has(mt.id);
+                const weightedPriceTotals = mt.shades.reduce(
+                  (acc, sh) => {
+                    if (sh.totalQuantity > 0) {
+                      if (sh.costPrice != null) {
+                        acc.costWeightedSum += sh.costPrice * sh.totalQuantity;
+                        acc.costWeight += sh.totalQuantity;
+                      }
+                      if (sh.salePrice != null) {
+                        acc.saleWeightedSum += sh.salePrice * sh.totalQuantity;
+                        acc.saleWeight += sh.totalQuantity;
+                      }
+                    }
+                    if (sh.costPrice != null) {
+                      acc.costSimpleSum += sh.costPrice;
+                      acc.costCount += 1;
+                    }
+                    if (sh.salePrice != null) {
+                      acc.saleSimpleSum += sh.salePrice;
+                      acc.saleCount += 1;
+                    }
+                    return acc;
+                  },
+                  {
+                    costWeightedSum: 0,
+                    costWeight: 0,
+                    saleWeightedSum: 0,
+                    saleWeight: 0,
+                    costSimpleSum: 0,
+                    costCount: 0,
+                    saleSimpleSum: 0,
+                    saleCount: 0,
+                  }
+                );
+
+                const avgCostPrice =
+                  weightedPriceTotals.costWeight > 0
+                    ? weightedPriceTotals.costWeightedSum / weightedPriceTotals.costWeight
+                    : weightedPriceTotals.costCount > 0
+                      ? weightedPriceTotals.costSimpleSum / weightedPriceTotals.costCount
+                      : null;
+                const avgSalePrice =
+                  weightedPriceTotals.saleWeight > 0
+                    ? weightedPriceTotals.saleWeightedSum / weightedPriceTotals.saleWeight
+                    : weightedPriceTotals.saleCount > 0
+                      ? weightedPriceTotals.saleSimpleSum / weightedPriceTotals.saleCount
+                      : null;
+
                 return (
                   <>
                     {/* ── Level 1: Marble Type ── */}
@@ -242,8 +289,16 @@ export function InventoryDashboard({ searchQuery = '', userRole = 'Staff' }: Inv
                       <td className="px-5 py-4 text-right font-semibold text-gray-800 dark:text-gray-100 tabular-nums">
                         {mt.totalQuantity.toLocaleString()} sq ft
                       </td>
-                      {isAdmin && <td className="px-5 py-4 text-right text-gray-400">—</td>}
-                      {isAdmin && <td className="px-5 py-4 text-right text-gray-400">—</td>}
+                      {isAdmin && (
+                        <td className="px-5 py-4 text-right text-gray-600 dark:text-gray-400 tabular-nums">
+                          {avgCostPrice != null ? `PKR ${avgCostPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '—'}
+                        </td>
+                      )}
+                      {isAdmin && (
+                        <td className="px-5 py-4 text-right font-medium text-green-600 dark:text-green-400 tabular-nums">
+                          {avgSalePrice != null ? `PKR ${avgSalePrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '—'}
+                        </td>
+                      )}
                       <td className="px-5 py-4"><StatusPill status={mt.overallStatus} /></td>
                       <td className="px-5 py-4 text-right text-sm text-gray-400 tabular-nums">
                         {new Date(mt.lastUpdated).toLocaleDateString()}

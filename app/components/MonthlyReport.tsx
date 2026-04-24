@@ -94,19 +94,19 @@ export function MonthlyReport({ searchQuery = '' }: MonthlyReportProps) {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <div className="bg-white dark:bg-gray-900 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-800">
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Total Added</p>
-          <p className="text-3xl font-semibold text-[#16A34A] dark:text-green-400 mb-2">4,500 kg</p>
+          <p className="text-3xl font-semibold text-[#16A34A] dark:text-green-400 mb-2">4,500 sq ft</p>
           <p className="text-xs text-gray-500 dark:text-gray-400">+12% from last month</p>
         </div>
 
         <div className="bg-white dark:bg-gray-900 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-800">
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Total Removed</p>
-          <p className="text-3xl font-semibold text-[#DC2626] dark:text-red-400 mb-2">4,200 kg</p>
+          <p className="text-3xl font-semibold text-[#DC2626] dark:text-red-400 mb-2">4,200 sq ft</p>
           <p className="text-xs text-gray-500 dark:text-gray-400">+8% from last month</p>
         </div>
 
         <div className="bg-white dark:bg-gray-900 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-800">
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Net Change</p>
-          <p className="text-3xl font-semibold text-[#2563EB] dark:text-blue-400 mb-2">+300 kg</p>
+          <p className="text-3xl font-semibold text-[#2563EB] dark:text-blue-400 mb-2">+300 sq ft</p>
           <p className="text-xs text-gray-500 dark:text-gray-400">Positive growth</p>
         </div>
 
@@ -136,8 +136,8 @@ export function MonthlyReport({ searchQuery = '' }: MonthlyReportProps) {
                 }}
               />
               <Legend wrapperStyle={{ color: isDarkMode ? '#fff' : '#1F2937' }} />
-              <Bar dataKey="added" fill="#16A34A" name="Added (kg)" />
-              <Bar dataKey="removed" fill="#DC2626" name="Removed (kg)" />
+              <Bar dataKey="added" fill="#16A34A" name="Added (sq ft)" />
+              <Bar dataKey="removed" fill="#DC2626" name="Removed (sq ft)" />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -164,7 +164,7 @@ export function MonthlyReport({ searchQuery = '' }: MonthlyReportProps) {
                 dataKey="inventory" 
                 stroke="#2563EB" 
                 strokeWidth={2}
-                name="Total Inventory (kg)"
+                name="Total Inventory (sq ft)"
               />
             </LineChart>
           </ResponsiveContainer>
@@ -191,7 +191,7 @@ export function MonthlyReport({ searchQuery = '' }: MonthlyReportProps) {
               {usageByType.map((item, index) => (
                 <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap font-medium text-[#1F2937] dark:text-white">{item.type}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-gray-900 dark:text-white">{item.usage.toLocaleString()} kg</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-gray-900 dark:text-white">{item.usage.toLocaleString()} sq ft</td>
                   <td className="px-6 py-4 whitespace-nowrap text-gray-600 dark:text-gray-400">{item.percentage}%</td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-2">
@@ -216,7 +216,7 @@ export function MonthlyReport({ searchQuery = '' }: MonthlyReportProps) {
               Total usage across all marble types
             </p>
             <p className="font-semibold text-[#1F2937] dark:text-white">
-              {usageByType.reduce((sum, item) => sum + item.usage, 0).toLocaleString()} kg
+              {usageByType.reduce((sum, item) => sum + item.usage, 0).toLocaleString()} sq ft
             </p>
           </div>
         </div>
@@ -232,7 +232,7 @@ export function MonthlyReport({ searchQuery = '' }: MonthlyReportProps) {
 
         <div className="bg-white dark:bg-gray-900 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-800">
           <h5 className="font-semibold text-[#1F2937] dark:text-white mb-3">Average Daily Usage</h5>
-          <p className="text-2xl font-semibold text-[#2563EB] dark:text-blue-400 mb-1">135.5 kg</p>
+          <p className="text-2xl font-semibold text-[#2563EB] dark:text-blue-400 mb-1">135.5 sq ft</p>
           <p className="text-sm text-gray-600 dark:text-gray-400">Based on 31 days</p>
         </div>
 
