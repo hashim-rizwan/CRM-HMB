@@ -22,8 +22,24 @@ export function CameraScanner({ onScanned, onClose }: CameraScannerProps) {
   useEffect(() => {
     async function loadCameras() {
       try {
+        if (!window.isSecureContext) {
+          setError('Camera requires HTTPS. Please open this app over a secure connection.');
+          return;
+        }
+
         const { BrowserMultiFormatReader } = await import('@zxing/browser');
-        const devices = await BrowserMultiFormatReader.listVideoInputDevices();
+        let devices = await BrowserMultiFormatReader.listVideoInputDevices();
+
+        // On some mobile browsers (especially iOS), cameras stay hidden until permission is requested once.
+        if (devices.length === 0 && navigator.mediaDevices?.getUserMedia) {
+          const warmupStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: 'environment' } },
+            audio: false,
+          });
+          warmupStream.getTracks().forEach((track) => track.stop());
+          devices = await BrowserMultiFormatReader.listVideoInputDevices();
+        }
+
         setCameras(devices);
         // Prefer back camera on mobile
         const back = devices.find(d => /back|rear|environment/i.test(d.label));
@@ -58,19 +74,32 @@ export function CameraScanner({ onScanned, onClose }: CameraScannerProps) {
 
         if (cancelled) return;
 
-        const controls = await reader.decodeFromVideoDevice(
-          selectedCamera,
-          videoRef.current!,
-          (result, err) => {
-            if (cancelled) return;
-            if (result) {
-              const text = result.getText();
-              setLastResult(text);
-              setScanning(false);
-              onScanned(text);
-            }
+        const onDecode = (result: any) => {
+          if (cancelled) return;
+          if (result) {
+            const text = result.getText();
+            setLastResult(text);
+            setScanning(false);
+            onScanned(text);
           }
-        );
+        };
+
+        let controls;
+        try {
+          controls = await reader.decodeFromVideoDevice(selectedCamera, videoRef.current!, onDecode);
+        } catch {
+          // Mobile fallback: deviceId-based opening can fail; let browser choose rear camera.
+          controls = await reader.decodeFromConstraints(
+            {
+              audio: false,
+              video: {
+                facingMode: { ideal: 'environment' },
+              },
+            },
+            videoRef.current!,
+            onDecode
+          );
+        }
 
         controlsRef.current = controls;
         setScanning(true);
@@ -126,6 +155,7 @@ export function CameraScanner({ onScanned, onClose }: CameraScannerProps) {
         <video
           ref={videoRef}
           className="w-full h-full object-cover"
+          autoPlay
           muted
           playsInline
         />
