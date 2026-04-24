@@ -6,14 +6,14 @@ export async function POST(request: NextRequest) {
   try {
     const { barcode, quantity } = await request.json();
 
-    if (!barcode || !quantity || quantity <= 0) {
+    const qty = parseFloat(quantity);
+    if (!barcode || isNaN(qty) || qty <= 0) {
       return NextResponse.json(
         { error: 'Invalid barcode or quantity' },
         { status: 400 }
       );
     }
 
-    // Find marble by barcode (check all barcode fields)
     const marble = await prisma.marble.findFirst({
       where: {
         OR: [
@@ -23,9 +23,7 @@ export async function POST(request: NextRequest) {
           { barcodeBMinus: barcode },
         ],
       },
-      include: {
-        stockEntries: true,
-      },
+      include: { stockEntries: true },
     });
 
     if (!marble) {
@@ -35,7 +33,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Determine which shade this barcode belongs to
     let shade: string | null = null;
     if (marble.barcodeAA === barcode) shade = 'AA';
     else if (marble.barcodeA === barcode) shade = 'A';
@@ -49,105 +46,76 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Calculate available quantity for this shade
-    const availableQuantity = marble.stockEntries
+    const shadeEntries = marble.stockEntries
       .filter(e => e.shade === shade)
-      .reduce((sum, e) => sum + e.quantity, 0);
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
 
-    if (availableQuantity < quantity) {
+    const availableQuantity = shadeEntries.reduce((s, e) => s + e.quantity, 0);
+
+    if (availableQuantity < qty) {
       return NextResponse.json(
-        { error: 'Insufficient stock' },
+        { error: `Insufficient stock for shade ${shade}. Available: ${availableQuantity.toFixed(2)} sq ft` },
         { status: 400 }
       );
     }
 
-    // Remove stock using FIFO (oldest entries first)
-    let remainingToRemove = quantity;
-    const entriesToUpdate = marble.stockEntries
-      .filter(e => e.shade === shade)
-      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    const { totalQuantity, shadeQuantity } = await prisma.$transaction(async (tx) => {
+      // FIFO deduction
+      let remaining = qty;
+      for (const entry of shadeEntries) {
+        if (remaining <= 0) break;
+        const toRemove = Math.min(remaining, entry.quantity);
+        if (toRemove >= entry.quantity) {
+          await tx.stockEntry.delete({ where: { id: entry.id } });
+        } else {
+          await tx.stockEntry.update({
+            where: { id: entry.id },
+            data: { quantity: entry.quantity - toRemove },
+          });
+        }
+        remaining -= toRemove;
+      }
 
-    for (const entry of entriesToUpdate) {
-      if (remainingToRemove <= 0) break;
+      await tx.stockTransaction.create({
+        data: {
+          marbleId: marble.id,
+          type: 'OUT',
+          quantity: qty,
+          notes: `Stock removed for shade ${shade} via barcode scan`,
+        },
+      });
 
-      const quantityToRemove = Math.min(remainingToRemove, entry.quantity);
+      // Recalculate quantities from DB
+      const allEntries = await tx.stockEntry.findMany({ where: { marbleId: marble.id } });
+      const totalQuantity = allEntries.reduce((s, e) => s + e.quantity, 0);
+      const shadeQuantity = allEntries.filter(e => e.shade === shade).reduce((s, e) => s + e.quantity, 0);
 
-      if (quantityToRemove >= entry.quantity) {
-        // Delete entire entry
-        await prisma.stockEntry.delete({
-          where: { id: entry.id },
-        });
-      } else {
-        // Update entry quantity
-        await prisma.stockEntry.update({
-          where: { id: entry.id },
+      let status = 'In Stock';
+      if (totalQuantity === 0) status = 'Out of Stock';
+      else if (totalQuantity < 100) status = 'Low Stock';
+
+      if (marble.status !== status) {
+        await tx.marble.update({ where: { id: marble.id }, data: { status } });
+      }
+
+      // Notify based on shade-specific quantity
+      if (shadeQuantity < 100) {
+        const notifStatus = shadeQuantity === 0 ? 'Out of Stock' : 'Low Stock';
+        await tx.notification.create({
           data: {
-            quantity: entry.quantity - quantityToRemove,
+            type: 'low-stock',
+            message: `Low stock alert: ${marble.marbleType} (${shade}) is ${notifStatus.toLowerCase()} (${shadeQuantity.toFixed(2)} sq ft remaining)`,
+            read: false,
           },
         });
       }
 
-      remainingToRemove -= quantityToRemove;
-    }
-
-    // Recalculate total quantity
-    const updatedMarble = await prisma.marble.findUnique({
-      where: { id: marble.id },
-      include: {
-        stockEntries: true,
-      },
+      return { totalQuantity, shadeQuantity };
     });
 
-    if (!updatedMarble) {
-      return NextResponse.json(
-        { error: 'Failed to update marble' },
-        { status: 500 }
-      );
-    }
-
-    const totalQuantity = updatedMarble.stockEntries.reduce((sum, e) => sum + e.quantity, 0);
-
-    // Update status based on new quantity
-    let status = 'In Stock';
-    if (totalQuantity === 0) {
-      status = 'Out of Stock';
-    } else if (totalQuantity < 100) {
-      status = 'Low Stock';
-    }
-
-    if (updatedMarble.status !== status) {
-      await prisma.marble.update({
-        where: { id: marble.id },
-        data: { status },
-      });
-    }
-
-    await prisma.stockTransaction.create({
-      data: {
-        marbleId: marble.id,
-        type: 'OUT',
-        quantity,
-        notes: `Stock removed for shade ${shade} via barcode scan`,
-      },
-    });
-
-    // Create notification if stock is low
-    if (status === 'Low Stock' || status === 'Out of Stock') {
-      await prisma.notification.create({
-        data: {
-          type: 'low-stock',
-          message: `Low stock alert: ${marble.marbleType} (${shade}) is ${status.toLowerCase()} (${totalQuantity.toFixed(2)} sq ft remaining)`,
-          read: false,
-        },
-      });
-    }
-
-    return NextResponse.json({ 
-      success: true, 
-      marble: {
-        ...updatedMarble,
-        quantity: totalQuantity, // Return calculated quantity for backward compatibility
-      }
+    return NextResponse.json({
+      success: true,
+      marble: { ...marble, quantity: totalQuantity },
     });
   } catch (error: any) {
     console.error('Error removing stock:', error);
