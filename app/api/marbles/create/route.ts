@@ -63,6 +63,8 @@ async function generateUniqueBarcodeForShade(
   throw new Error(`Unable to generate unique barcode for ${marbleType}-${shade} after ${maxAttempts} attempts. Please contact support.`);
 }
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const {

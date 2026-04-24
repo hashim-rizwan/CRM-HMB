@@ -8,6 +8,8 @@ import {
   type AvailableSlab,
 } from '@/lib/slabMatching';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const {

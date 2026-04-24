@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { responseIfDatabaseUnavailable } from '@/lib/prismaErrors';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const { username, currentPassword, newPassword } = await request.json();

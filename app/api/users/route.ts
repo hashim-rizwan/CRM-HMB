@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { responseIfDatabaseUnavailable } from '@/lib/prismaErrors';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const users = await prisma.user.findMany({
